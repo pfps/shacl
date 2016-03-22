@@ -83,10 +83,9 @@ def listTurtle(g,head) :
 
 def fragmentPattern(g,code,message,context) :	# SubSelect <- GroupGraphPattern pieces
     body = """# FRAGMENT 
-  SELECT [projection] ?this ?message ?severity (?this AS ?object)
+  SELECT [projection] ?this ([message] AS ?message) ([severity] AS ?severity) (?this AS ?object)
   WHERE { [outer] [inner]
-          [code] }
-  VALUES (?message ?severity) { ( [message] [severity] ) }"""
+          [code] }"""
     result = substitute(body,g,context, code=code, message='"'+message+'"')
     return result
 
@@ -244,40 +243,36 @@ def listC(g,value,context) :			# SubSelect
 
 def hasValueC(g,value,context) :		# SubSelect
     body = """# hasValue
-  SELECT [projection] ?message ?severity
+  SELECT [projection] ([message] AS ?message) ([severity] AS ?severity)
   WHERE { [outer] 
-          FILTER NOT EXISTS { [inner] FILTER sameTerm(?this,[value]) } }
-  VALUES (?message ?severity) { ( [message] [severity] ) }""" 
+          FILTER NOT EXISTS { [inner] FILTER sameTerm(?this,[value]) } }""" 
     return substitute(body,g,context,value=value,
                       message='"Missing required value %s"' % curieS(g,value))
 
 def uniqueLangC(g,value,context) :		# SubSelect
     if value == true :
         body = """# uniquelang
-  SELECT [projection] ?message ?severity
+  SELECT [projection] ([message] AS ?message) ([severity] AS ?severity)
   WHERE { [outer] [inner]
           BIND (lang(?this) AS ?lang)
           FILTER (isLiteral(?this) && bound(?lang) && ?lang != "") }
-  [group] ?lang  HAVING ( COUNT(?this) > 1 )
-  VALUES (?message ?severity) { ( [message] [severity] ) }"""
+  [group] ?lang  HAVING ( COUNT(?this) > 1 )"""
 	return substitute(body,g,context,message='"Values share a language tag"')
     else : return universalShape
 
 def minCountC(g,value,context) :		# SubSelect
     body = """# minCount
-  SELECT [projection] ?message ?severity
+  SELECT [projection] ([message] AS ?message) ([severity] AS ?severity)
   WHERE { [outer] OPTIONAL { [inner] } }
-  [group] HAVING ( COUNT (DISTINCT ?this) < [value] )
-  VALUES (?message ?severity) { ( [message] [severity] ) }"""
+  [group] HAVING ( COUNT (DISTINCT ?this) < [value] )"""
     return substitute(body,g,context,value=value,
                       message='"Too few values, need at least %s"' % value)
 
 def maxCountC(g,value,context) :		# SubSelect
     body = """# maxCount
-  SELECT [projection] ?message ?severity
+  SELECT [projection] ([message] AS ?message) ([severity] AS ?severity)
   WHERE { [outer] OPTIONAL { [inner] } }
-  [group] HAVING ( COUNT (DISTINCT ?this) > [value] )
-  VALUES (?message ?severity) { ( [message] [severity] ) }"""
+  [group] HAVING ( COUNT (DISTINCT ?this) > [value] )"""
     return substitute(body,g,context,value=value,
                       message=u'"Too many values, want at most %s"' % value)
 
@@ -285,6 +280,7 @@ def shapeC(g,value,context) :			# SubSelect
     child = processShape(g,value,context)
     return """# COMPONENT shape\n%(child)s""" % { "child":child }
 
+# uses severity at least this severity, not Violation
 def notC(g,value,context) :			# SubSelect
     child = processShape(g,value,context)
     result = """  SELECT [projection] ?this ?message ?severity ?subject ?property ?object
@@ -308,6 +304,7 @@ def andC(g,value,context) :			# SubSelect
   WHERE { [childs] }"""
     return substitute(result,g,context,childs=childs)
 
+# how should severity be handled?
 def orC(g,value,context) :			# SubSelect
     children = [ processShape(g,child,context)
                  for child in listElements(g,value) ]
@@ -502,13 +499,15 @@ def processShapeInternal(g,shape,context,exclusions=[],compatability=False) :
     context = dict(context,severity=severity)
     filters = [ processShape(g,filterValue,context)
                 for filterValue in g.objects(shape,SH.filter) ]
-    if ( len(filters) > 0 ) : # what about severity?
-        filterBodies = [ """SELECT %(projection)s ?this WHERE { %(body)s }""" % \
-                             { "projection":context["projection"], "body":body }
+    if ( len(filters) > 0 ) : # filters use severity Violation
+        fBodies = [ """SELECT %(projection)s ?this WHERE { { %(body)s }
+				FILTER ( sameTerm(?severity,%(violation)s) ) }""" % \
+                    { "projection":context["projection"], "body":body,
+                      "violation":Violation.n3() }
                          for body in filters ]
         context["inner"] = "{ " + context["inner"] + " ".join(exclusions) + \
                         "\n } MINUS { # FILTER\n" + \
-                        "\n } MINUS { # FILTER\n".join(filterBodies) + \
+                        "\n } MINUS { # FILTER\n".join(fBodies) + \
                         "\n }"
     components = []
     if compatability : # iterate on compatability constructs
