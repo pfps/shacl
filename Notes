@@ -1,0 +1,114 @@
+		Implementing SHACL as a translation to SPARQL
+
+I updated my older implementation of SHACL to my new syntax proposal and
+added the missing pieces.  This implementation is a pure translation to
+SPARQL - the validation results of a SHACL shape are the elements of the
+result set returned by a SPARQL query against an RDF graph.  The
+implementation cannot depend on pre-binding in the data graph or hasShape or
+anything that is not in SPARQL.  The implementation also does not depend on
+access to the shapes graph during the execution of the SPARQL queries.
+
+
+	Implementation Basics
+
+The queries that implement shape validation need an environment where the
+main variable (always ?this) will include the nodes in the data graph that
+need to be validated.  This is easy for the initial shape (the one that
+works on the results of scopes) but not so easy for embedded shapes.
+
+To ensure that embedded shapes work correctly they use a graph pattern that
+correctly generates bindings for ?this.  For example, inside a construct
+that is looking at the values of a path the pattern will bind ?this to these
+values.
+
+However, this is not quite sufficient for constructs (like minCount) that
+need to look at a set of values as an entirety.  If there are no values for
+?this then there are no bindings and thus nothing to work with in SPARQL.
+To get around this problem, the graph pattern thus does not just generate
+bindings for ?this but bindings for ?this related to another node, which is
+the binding for ?parent, or related to the graph as a whole, in which case
+there is no ?parent variable.
+
+The net effect then is that for those constructs that need it the pattern
+can be grouped correctly to make these sets, that can, for example, be
+counted for minCount, even if the set is the empty set.
+
+So that the correct pattern can be generated when looking at values of
+values, it is broken up into two parts - one that sets up the stage (usually
+determining bindings for ?parent) and one that then sets up bindings for
+?this (usually using the bindings for ?parent if it is available).  When
+looking at values of values, the outer part is removed, the inner part
+becomes the new outer, and a new inner is created to transverse the path.
+
+To this basic context is added several pieces of information that is needed
+to generate the SPARQL queries.  This is all available as
+  inner - SPARQL pattern or query to get bindings for ?this
+  	- usually goes from ?parent to ?this
+  outer - SPARQL pattern or query to get bindings for ?parent
+  	- not always present, e.g., not present at top level
+  severity - the severity to be used in validation results
+  projection - the variable used in outer to get to ?this - usually ?parent
+  group - how to separate the results for counting, etc.
+  	- usually GROUP BY ?parent
+
+	Validation Results
+
+Validation results are solutions in SPARQL result sets.  These result sets
+have bindings as follows
+ ?this - head node for the result
+ ?shape - top-level shape involved in result
+ ?message - message for result
+ ?severity - severity of result
+ ?subject - subject of triple in result
+ ?predicate - predicate of triple in result
+ ?object - object of triple in result
+
+       Templates
+
+Because prebinding and extension functions are not available to the
+implementation it has to use a different method for templates.  The method
+used is substitution - instead of prebinding, the template code is subjected
+to a process that substitutes the values of parameters into the code.  To
+handle subshapes, the method also allows the query for a shape to be
+substituted into the code.  
+
+Because there is no functional help like hasShape available the SPARQL
+queries need to do include all the mediation for subshapes.  This ends up
+with slightly more complex queries than otherwise, but in most cases what is
+needed just boilerplate and can be added on to the core portion of the query
+by the implementation.  The template mechanism is designed to take care of
+this boilerplate.
+
+Substitution normally puts a representation of a node itself into the SPARQL
+code.  To get access to larger chunks of the shape graph requires adding a
+specifier to the 
+
+Template instantiation proceeds by first augmenting a copy of the context
+with argument being the argument of the template, then it looks through
+propValues constructs on the template and for any of them that have a
+sh:argumentName it augments the context with that name being a value of the
+propValues path or the sh:argumentDefault there if there is no value or ""
+if the is also no default.  Then it uses this context to substitute in
+sh:templateMessage (default "") and adds the result of this for message.
+Then it looks for a value for sh:templatePattern and puts that into the
+pattern part of a query that will implement the shape.  If there is no
+sh:templatePattern then it looks for sh:templateFilter, wraps that in a
+negated FILTER, and constructs the shape.
+
+sh:notEqualsT a sh:ComponentTemplate ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+  sh:list shmm:pathShape ;
+  sh:propValues ( ( rdf:rest rdf:rest ) [ sh:hasValue rdf:nil ] ) ;
+  sh:propValues ( rdf:first [ sh:shape shmm:pathShape ; sh:argumentName "path1" ] ) ; 
+  sh:propValues ( ( rdf:rest rdf:first ) [ sh:shape shmm:pathShape ; sh:argumentName "path2" ] ) ; 
+  sh:templateMessage "Path values not disjoint" ;
+  sh:messsage "Not list of two paths" ;
+  sh:templatePattern """?this [path1:p] ?value1 . ?this [path2:p] ?value1 .""" .
+
+
+
+	Internal Implementation Notes
+
+Installing rdflib
+  sudo pip install rdflib
+  fix up permissions in /usr/lib/python2.7/site-packages
+
