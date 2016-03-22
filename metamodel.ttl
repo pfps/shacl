@@ -16,13 +16,26 @@
 
 sh:Shape a rdfs:Class .
 
-sh:name         a rdf:Property ; rdfs:range rdf:langString .
-sh:description  a rdf:Property ; rdfs:range rdf:langString .
-sh:message      a rdf:Property ; rdfs:range rdf:LangString.
-sh:order        a rdf:Property ; rdfs:domain sh:Shape ; rdfs:range xs:decimal .
+sh:severity     a rdf:Property .
+
+sh:name         a rdf:Property ; rdfs:domain sh:Shape ; rdfs:range rdf:langString .
+sh:description  a rdf:Property ; rdfs:domain sh:Shape ; rdfs:range rdf:langString .
+sh:order        a rdf:Property ; rdfs:range xs:decimal .
+sh:group	a rdf:Property ; rdfs:domain sh:Shape ; rdfs:range sh:PropertyGroup .
 sh:defaultValue a rdf:Property ; rdfs:domain sh:Shape .
 
-sh:severity     a rdf:Property .
+shmm:shapeOtherShape a sh:Shape ; sh:scopeClass sh:Shape ;
+  sh:propValues ( sh:severity [ sh:in ( sh:Info sh:Warning sh:Violation ) ] ) ;
+  sh:propValues ( sh:name [ sh:uniqueLang true ] );
+  sh:propValues ( sh:description [ sh:uniqueLang true ] );
+  sh:propValues ( sh:order [ sh:datatype xs:decimal ; sh:maxCount 1 ] ) ;
+  sh:propValues ( sh:group [ sh:class sh:PropertyGroup ] ) ;
+  sh:propValues ( sh:defaultValue [ sh:maxCount 1 ] ) .
+
+sh:PropertyGroup a rdfs:Class .
+
+shmm:shapePropertyGroup a sh:Shape ; sh:scopeClass sh:PropertyGroup ;
+  sh:propValues ( sh:order [ sh:datatype xs:decimal ; sh:maxCount 1 ] ) .
 
 sh:inverse      a rdf:Property ; rdfs:range rdf:Property .
 
@@ -38,7 +51,7 @@ sh:sourceTemplate   a rdf:Property ; rdfs:domain sh:ValidationResult ; rdfs:rang
 sh:detail           a rdf:Property ; rdfs:domain sh:ValidationResult .
 sh:message          a rdf:Property ; rdfs:domain sh:ValidationResult ; rdfs:range rdf:LangString .
 
-sh:ValidationResultSyntax a sh:Shape ; sh:scopeClass sh:ValidationResult ;
+shmm:ValidationResultSyntax a sh:Shape ; sh:scopeClass sh:ValidationResult ;
   sh:propValues ( sh:focusNode [ sh:maxCount 1 ] ) ;
   sh:propValues ( sh:subject [ sh:maxCount 1 ] ) ;
   sh:propValues ( sh:predicate [ sh:maxCount 1 ] ) ;

@@ -1,8 +1,9 @@
 ## SHACL metamodel for my proposed syntax, including validation shapes
 ## Shape graphs can be validated as data against this metamodel,
 ## provided that all RDFS consequences are included in the shape graph.
-## An alternative is to change the scopes to property object scopes,
-## see metamodel-2.ttl for a metamodel that does this.
+## This version uses property object scopes in component shapes,
+## resulting in simpler shapes but uninformative error messages.
+## This metamodel does not have recent changes that have been made to the other one.
 
 @prefix xs: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -37,7 +38,7 @@ sh:sourceTemplate   a rdf:Property ; rdfs:domain sh:ValidationResult ; rdfs:rang
 sh:detail           a rdf:Property ; rdfs:domain sh:ValidationResult .
 sh:message          a rdf:Property ; rdfs:domain sh:ValidationResult ; rdfs:range rdf:LangString .
 
-sh:ValidationResultSyntax a sh:Shape ; sh:scopeClass sh:ValidationResult ;
+shmm:ValidationResultSyntax a sh:Shape ; sh:scopeClass sh:ValidationResult ;
   sh:propValues ( sh:focusNode [ sh:maxCount 1 ] ) ;
   sh:propValues ( sh:subject [ sh:maxCount 1 ] ) ;
   sh:propValues ( sh:predicate [ sh:maxCount 1 ] ) ;
