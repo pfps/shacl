@@ -256,7 +256,7 @@ def uniqueLangC(g,value,context) :		# SubSelect
   WHERE { [outer] [inner]
           BIND (lang(?this) AS ?lang)
           FILTER (isLiteral(?this) && bound(?lang) && ?lang != "") }
-  [group] ?lang  HAVING ( COUNT(?this) > 1 )"""
+  GROUP BY [projection] ?lang  HAVING ( COUNT(?this) > 1 )"""
 	return substitute(body,g,context,message='"Values share a language tag"')
     else : return universalShape
 
@@ -365,16 +365,17 @@ def constructShape(g,shape,components,context) :	# SubSelect <- SubSelects
 
 # set up a new context that is the values of a path from the current context
 def newContext(g,path,message,childShape,context) : # SubSelect
-    childouter = """{ SELECT (?parent AS ?grandparent) (?this AS ?parent) 
-        WHERE { %(inner)s } }""" % { "inner":context["inner"] }
+    childouter = """{ SELECT (IF(BOUND(?p),?p,"UNKNOWN P") AS ?parent) (IF(BOUND(?gp),?gp,"UNKNOWN GP") AS ?grandparent)
+	WHERE { { SELECT (IF(BOUND(?this),?this,"UNK T") AS ?p) (IF(BOUND(?parent),?parent,"UNK P") AS ?gp) WHERE { %(inner)s } }
+	} }""" % { "inner":context["inner"] }
     childinner = """{ ?parent %(path)s ?this . }""" % { "path":pathS(path) }
     childcontext=dict(severity=context["severity"],outer=childouter,projection="?parent",
                       group="GROUP BY ?parent",inner=childinner)
     child = processShape(g,childShape,childcontext)
     result ="""# newContext
   SELECT [projection] ?this ?message ?severity ?subject ?predicate ?object
-  WHERE { [inner] # subshape inner
-   {SELECT (?childGrandparent AS ?parent) (?childParent AS ?this)
+  WHERE { 
+   {SELECT (?childGrandparent AS ?parent) ?this # (?childParent AS ?this)
            ?message ?severity ?subject ?predicate ?object
      WHERE
      {{ SELECT (?grandparent AS ?childGrandparent) (?parent AS ?childParent)
@@ -384,9 +385,12 @@ def newContext(g,path,message,childShape,context) : # SubSelect
               } }
       BIND( (IF(BOUND(?childSubject), ?childSubject, ?childParent)) AS ?subject )
       BIND( (IF(BOUND(?childSubject), ?childPredicate, [path])) AS ?predicate )
+      BIND( (IF(BOUND(?childParent), ?childParent, "UNKNOWN")) AS ?this )
       BIND( CONCAT([message],?childMessage) AS ?message )
       BIND( [severity] AS ?severity ) 
-      } } }"""
+      } } 
+      [inner] # subshape inner
+      }"""
     return substitute(result,g,context,message='"'+message+'"',child=child,
                       path=curie(g,path) )
 
@@ -471,17 +475,18 @@ def processShapeInvocation(g,shape) :
     for scopeValue in g.objects(shape,SH.scopeClass) :
         scopes.append("?this rdf:type/rdfs:subClassOf* %s ." % scopeValue.n3())
     for scopeValue in g.objects(shape,SH.scopePropertyObject) :
-        scopes.append("SELECT DISTINCT ?this WHERE { ?that %s ?this . }" % scopeValue.n3())
+        scopes.append("{ SELECT DISTINCT ?this WHERE { ?that %s ?this . } }" % scopeValue.n3())
     for scopeValue in g.objects(shape,SH.scopePropertySubject) :
-        scopes.append("SELECT DISTINCT ?this WHERE { ?this %s ?that . }" % scopeValue.n3())
+        scopes.append("{ SELECT DISTINCT ?this WHERE { ?this %s ?that . } }" % scopeValue.n3())
     if (shape,SH.scopeAllObjects,true) in g :
-        scopes.append("SELECT DISTINCT ?this WHERE { ?that ?property ?this . }")
+        scopes.append("{ SELECT DISTINCT ?this WHERE { ?that ?property ?this . } }")
     if (shape,SH.scopeAllSubjects,true) in g :
-        scopes.append("SELECT DISTINCT ?this WHERE { ?this ?property ?that . }")
+        scopes.append("{ SELECT DISTINCT ?this WHERE { ?this ?property ?that . } }")
     for scopeValue in g.objects(shape,SH.scopeSPARQL) :
-        scopes.append("SELECT DISTINCT ( ?scope AS ?this ) WHERE { %s }" % scopeValue.n3())
+        scopes.append("{ SELECT DISTINCT ( ?scope AS ?this ) WHERE { %s } }" % scopeValue.n3())
     if ( len(scopes) > 0 ) :
-        scope = "{ { # SCOPE\n" + "\n} UNION # SCOPE\n { ".join(scopes) + " } }\n"
+        if ( len(scopes) == 1 ) : scope = scopes[0]
+        else : scope = "{ { # SCOPE\n" + "\n} UNION # SCOPE\n { ".join(scopes) + " } }\n"
         body = processShape(g,shape,{"severity":severity,"outer":"","projection":"",
                                      "group":"","inner":scope})
         return """PREFIX sh: <http://www.w3.org/ns/shacl#>\n""" + body
@@ -552,29 +557,29 @@ def validate(dataGraph,shapesGraph,printShapes=False,printResults=False) :
         if isinstance(row[0],rdflib.term.URIRef) :
             for result in validateShape(dataGraph,row[0],shapesGraph,printShapes) :
                 results.append(result)
-                if printResults : print result
+                if printResults : printResult(result,shapesGraph)
     return results
 
 ## execute for validation
 
-def qname(node) :
-  if isinstance(node,rdflib.term.URIRef) : return shapesGraph.qname(unicode(node))
-  else : return node.n3(shapesGraph.namespace_manager)
+def qname(node,graph) :
+  if isinstance(node,rdflib.term.URIRef) : return graph.qname(unicode(node))
+  else : return node.n3(graph.namespace_manager)
 
-def printResult(result) :
-      try : print "SH",qname(result.shape),
+def printResult(result,graph) :
+      try : print "SH",qname(result.shape,graph),
       except AttributeError : None
-      try : print "THIS",qname(result.this),
+      try : print "THIS",qname(result.this,graph),
       except AttributeError : None
-      try : print "S",qname(result.subject),
+      try : print "S",qname(result.subject,graph),
       except AttributeError : None
-      try : print "P",qname(result.predicate),
+      try : print "P",qname(result.predicate,graph),
       except AttributeError : None
-      try : print "O",qname(result.object),
+      try : print "O",qname(result.object,graph),
       except AttributeError : None
-      try : print "MESSAGE",qname(result.message),
+      try : print "MESSAGE",qname(result.message,graph),
       except AttributeError : None
-      try : print "SEV",qname(result.severity),
+      try : print "SEV",qname(result.severity,graph),
       except AttributeError : None
       print ""
 
@@ -591,4 +596,4 @@ if __name__ == "__main__" :
     shapesGraph = shapesGraph.parse(sys.argv[2],format='turtle')
     results = validate(dataGraph,shapesGraph,False,False)
 
-    for result in results : printResult(result)
+    for result in results : printResult(result,shapesGraph)

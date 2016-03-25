@@ -264,9 +264,8 @@ results for nodes that violate the component.  (The first four are
 for convenience only.)
 
 Parameterization of component templates is done by substitution.  Values for
-all five of the above properties can have substrings of the form [var] or
-[var:modifier] that are subject to replacement as described in the semantics
-section.
+all five of the above properties can have substrings of the form [expression]
+that are subject to replacement as described in the semantics section.
 
 A component template is also a shape and a property.  The value of a component
 template predicate of a shape in a shape graph is validated against the component
@@ -446,15 +445,15 @@ solution with $severity bound to sh:Violation.
 '''Note: Construct queries are not handled.'''
 
 The SPARQL query is modified by substitution.  Substrings in the template
-code and in the template message that look like [var] or [var:modifier] are
-substituted by text derived from the var element of the current context.
-This context always includes 'outer' and 'inner' that together produce the
-correct set of bindings for ?this, 'projection' that is used to add extra
-bindings to the result set to keep track of external context, 'group' that
-is GROUP BY clause that can be used to group solutions for ?this, and
-'severity' that is the current severity.  To this context is added
-'argument', which is the object of the shape component, and elements for
-each sh:argumentName found in the sh:propValues for the template.
+code and in the template message that look like [expression] are substituted
+in the current context.  This context always includes 'outer' and 'inner'
+that together produce the correct set of bindings for ?this, 'projection'
+that is used to add extra bindings to the result set to keep track of
+external context, 'group' that is GROUP BY clause that can be used to group
+solutions for ?this, and 'severity' that is the current severity.  To this
+context is added 'argument', which is the object of the shape component, and
+elements for each sh:argumentName found in the sh:propValues for the
+template.
 
 '''Note: Having multiple sh:propValues with the same sh:argumentName leads
 to undefined results.'''
@@ -462,14 +461,16 @@ to undefined results.'''
 '''Note: Having multiple values for an argument path leads to undefined
 results.'''
 
-If there is no modifier then IRI and Literal nodes are substituted as-is and
-blank nodes are substituted as a random(ish) string.  If the modifier is 'l'
-then the elements of the list with the node as head separated by a space are
-substituted (suitable for use in a VALUES construct).  If the modifier is
-'p' then the node is considered as a path (matching the pathShape shape) and
-the SPARQL version of the path is substituted.  If the modifier is 's' then
-the node is considered as a path and the SPARQL query for the shape is
-substituted.
+Substition expressions can be
+- a quoted string
+- a simple name, where the name's value in the context is substituted.
+- p(name), where the name's value is processed as a path
+- s(name), where the name's value is processed as a shape
+- c(path name), where the name's value is processed as a shape 
+		to produce a shape for path values
+- l(expression string), where the list values for the value of identifier in
+  expression are processed instead of its values and the results joined with
+  string
 
 The SPARQL query is constructed from values of sh:templatePattern,
 sh:templateFilter, and sh:templateHaving if any of these are present or

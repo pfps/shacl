@@ -49,7 +49,7 @@ to generate the SPARQL queries.  This is all available as
   severity - the severity to be used in validation results
   projection - the variable used in outer to get to ?this - usually ?parent
   group - how to separate the results for counting, etc.
-  	- usually GROUP BY ?parent
+  	- if there is a parent this is GROUP BY ?parent
 
 	Validation Results
 
@@ -88,7 +88,7 @@ with argument being the argument of the template, then it looks through
 propValues constructs on the template and for any of them that have a
 sh:argumentName it augments the context with that name being a value of the
 propValues path or the sh:argumentDefault there if there is no value or ""
-if the is also no default.  Then it uses this context to substitute in
+if there is also no default.  Then it uses this context to substitute in
 sh:templateMessage (default "") and adds the result of this for message.
 Then it looks for a value for sh:templatePattern and puts that into the
 pattern part of a query that will implement the shape.  If there is no
@@ -102,7 +102,7 @@ sh:notEqualsT a sh:ComponentTemplate ; rdfs:domain sh:Shape ; rdfs:range rdf:Lis
   sh:propValues ( ( rdf:rest rdf:first ) [ sh:shape shmm:pathShape ; sh:argumentName "path2" ] ) ; 
   sh:templateMessage "Path values not disjoint" ;
   sh:messsage "Not list of two paths" ;
-  sh:templatePattern """?this [path1:p] ?value1 . ?this [path2:p] ?value1 .""" .
+  sh:templatePattern """?this [p(path1)] ?value1 . ?this [p(path2)] ?value1 .""" .
 
 
 
