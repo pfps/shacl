@@ -130,7 +130,7 @@ The syntax of the various SHACL core components are:
   sh:maxCount     non-negative integer
   sh:uniqueLang   boolean
   sh:partition    list of shapes
-  sh:closed       list of IRIs (which are used as properties)
+  sh:closed       list of parts (which are used as (inverse) properties)
 
   sh:constraint	  		shape			for compatability
   sh:property			shape with sh:predicate	for compatability
