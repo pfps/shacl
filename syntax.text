@@ -424,7 +424,7 @@ are processed similar to path processing in the SPARQL 1.1 Query Language.
 :: Nodes in input_n+1 fail to validate for the component.
   
 * sh:sparql code
-:: The in-filter nodes that fail to validate are those for which a solution with $severity bound to sh:Violation and $focusNode bound to the node or unbound would be produced when the code is run over the data graph in an environment where $this is bound to the set of in-filter nodes. '''Not handling construct method yet.'''
+:: The in-filter nodes that fail to validate are those for which a solution with $severity bound to sh:Violation and $focusNode bound to the node or unbound would be produced when the code is run over the data graph in an environment where $this is bound to the set of in-filter nodes.
 
 
 === Templates ===
@@ -441,8 +441,6 @@ validation environment has $this bound to the set of in-filter nodes of the
 shape.  Extra bindings in solutions contribute to validation results.  Nodes
 in the in-focus fail to validate against the component if there is a
 solution with $severity bound to sh:Violation.
-
-'''Note: Construct queries are not handled.'''
 
 The SPARQL query is modified by substitution.  Substrings in the template
 code and in the template message that look like [expression] are substituted
