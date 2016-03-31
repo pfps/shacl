@@ -1,5 +1,11 @@
 		A User-Friendly Syntax for Core SHACL
 
+This is a user-friendly syntax for the core of SHACL that tries to align
+directly with the RDF syntax for SHACL.   It would be possible to modify the
+syntax to come up with a more standard treatment of conjunction,
+disjunction, and negation but that syntax would not align as closely with
+the RDF syntax.
+
 
 	Example    				Description
 
@@ -60,7 +66,11 @@ scope	  ::= value				# the value
 	    | '¹' '?'				# all subjects
 	    | '?' '²'				# all objects
 
-component ::= '∈' class ( '∪' class )*	# SHACL instance of one of classes
+component ::= name				# validate against named shape
+	    | '(' shape ')'			# validate against shape
+	    | '¬' component			# doesn't validate ag. comp.
+	    | '(' component ('∨'component)+ ')' # validate against some comp.
+	    | '∈' class ( '∪' class )*		# SHACL instance of some cl.
 	    | '^^' datatype ( '∪' datatype )*	# has one of datatypes
 	    | '∈' '{' value* '}'		# is one of values
 	    | '⋹' class  			# has rdf:type of class
@@ -79,7 +89,6 @@ component ::= '∈' class ( '∪' class )*	# SHACL instance of one of classes
 	    | path '∝' component		# path values in shape
 	    | '[' shape ']'			# list members in shape
 	    | '⟦' pathpart * '⟧'		# no other property has values
-	    | subshape				# set validates against shape
 	    | '∋' value				# set contains value
 	    | '|' '≥' nonnegativeInteger '|'	# minimum size of set
 	    | '|' '≤' nonnegativeInteger '|'	# maximum size of set
@@ -91,11 +100,6 @@ component ::= '∈' class ( '∪' class )*	# SHACL instance of one of classes
 		# to validate against the filter of the respective component.
 		# The final remnant is empty.
 		# Each remnant validates against the respective component.
-
-subshape  ::= name				# validate against named shape
-	    | '(' shape ')'			# validate against shape
-	    | '¬' component			# don't validate against shape
-	    | '(' component ('∨'component)+ ')' # validate against some shape
 
 filter	  ::= component				# nodes that validate vs shape
 
