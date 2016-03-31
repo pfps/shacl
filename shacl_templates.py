@@ -9,6 +9,10 @@
 ## All constructs are handled by substitution into templates,
 ## except partition, which uses an internal-only interface
 
+## NOT HANDLED
+## scopes as templates; scope templates
+## per-language messages
+
 import string
 import itertools
 import rdflib
@@ -258,7 +262,7 @@ def processShapeInvocation(g,shape,printShapes=False) :
         scopes.append("SELECT DISTINCT ?this WHERE { ?that ?property ?this . }")
     if (shape,SH.scopeAllSubjects,true) in g :
         scopes.append("SELECT DISTINCT ?this WHERE { ?this ?property ?that . }")
-    for scopeValue in g.objects(shape,SH.scopeSPARQL) :
+    for scopeValue in g.objects(shape,SH.scopeQuery) :
         scopes.append("SELECT DISTINCT ( ?scope AS ?this ) WHERE { %s }" % scopeValue.n3())
     if ( len(scopes) > 0 ) :
         scope = "{ # SCOPE\n" + "\n} UNION # SCOPE\n { ".join(scopes) + " }\n"

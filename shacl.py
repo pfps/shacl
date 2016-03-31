@@ -1,4 +1,5 @@
-## An implementation of SHACL based on query generation.
+## An implementation of Core SHACL based on query generation.
+## Also handles sh:scopeQuery and sh:query
 ##
 ## Uses the rdflib package and its SPARQL implementation.
 ##
@@ -352,6 +353,9 @@ def partitionC(g,value,context) :		# SubSelect
   WHERE { [bodys] }   """
     return substitute(result,g,context,bodys=bodys)
 
+def queryC(g,value,context) :			# SubSelect
+    return " { " + value + " } "
+
 def constructShape(g,shape,components,context) :	# SubSelect <- SubSelects
     if ( len(components) > 0 ) :
         body = "{ " + " } UNION { ".join(components) + " }"
@@ -458,7 +462,7 @@ constructs = { 'in':inC , 'class':classC, 'classIn':classInC, 'datatype':datatyp
                'hasValue':hasValueC, 'uniqueLang':uniqueLangC,
                'minCount':minCountC, 'maxCount':maxCountC,
                'shape':shapeC, 'not':notC, 'and':andC, 'or':orC,
-               'closed':closedC , 'partition':partitionC }
+               'closed':closedC , 'partition':partitionC, 'query':queryC }
 compatabilityConstructs = { 'constraint':constraintC, 'property':propertyC,
                             'inverseProperty':inversePropertyC, 
                             'qualifiedValueShape':qualifiedValueShapeC,
@@ -482,7 +486,7 @@ def processShapeInvocation(g,shape) :
         scopes.append("{ SELECT DISTINCT ?this WHERE { ?that ?property ?this . } }")
     if (shape,SH.scopeAllSubjects,true) in g :
         scopes.append("{ SELECT DISTINCT ?this WHERE { ?this ?property ?that . } }")
-    for scopeValue in g.objects(shape,SH.scopeSPARQL) :
+    for scopeValue in g.objects(shape,SH.scopeQuery) :
         scopes.append("{ SELECT DISTINCT ( ?scope AS ?this ) WHERE { %s } }" % scopeValue.n3())
     if ( len(scopes) > 0 ) :
         if ( len(scopes) == 1 ) : scope = scopes[0]
