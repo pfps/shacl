@@ -322,42 +322,53 @@ are processed similar to path processing in the SPARQL 1.1 Query Language.
 :: Nodes in input_n+1 fail to validate for the component.
 
 
-== SPARQL Extension (REVISED) ==
+== SPARQL Extension Mechanism (REVISED) ==
 
-This is a description of the syntax of the SPARQL extension and an account
-of how it works.  The SPARQL extension does not depend on any extensions to
-SPARQL and thus can be used on any RDF graph that can be queried via SPARQL,
-including SPAQL endpoints
+This is a description of the syntax of a SPARQL extension for SHACL based on
+substitution and an account of how it works.  This extension mechanism for
+SHACL does not depend on any extensions to SPARQL and thus can be used with
+any SPARQL implementation or service, including SPAQL endpoints
 
-The SPARQL queries in the SPARQL extension are always augmented with
-standard prefix bindings for rdf, rdfs, xsd, and sh as above.  '''A
-mechanism for augmenting these bindings might be useful.'''
+=== Using SPARQL Queries in SHACL ===
 
-=== Validation Using SPARQL Queries ===
+The extension uses solutions in SPARQL result sets as validation results.
+These solutions have bindings for at least ?this and ?severity.  A set of
+nodes validates against a component in the SPARQL extension if evaluating
+the SPARQL query for the component over the data graph would produce no
+query results with ?severity bound to sh:Violation when joined to a result
+set with solutions having ?this bound to elements of the set.  Validation
+fails on nodes that have a solution in the joined result set with ?this
+bound to the node and ?severity bound to sh:Violation.
 
-The SPARQL extension uses solutions in SPARQL result sets as validation
-results.  These solutions have bindings for at least ?this and ?severity.  A
-set of nodes validates against a component in the SPARQL extension if
-evaluating the SPARQL query for the component over the data graph would
-produce no query results with ?severity bound to sh:Violation when joined to
-a result set with solutions having ?this bound to elements of the set.
-Validation fails on nodes that have a solution in the joined result set with
-?this bound to the node and ?severity bound to sh:Violation.
+The extension uses solutions in SPARQL result sets as scopes and as
+synthetic properties.  For scopes, the set of nodes in a scope are the set
+of bindings for ?scope in the solutions of a result set.  For synthetic
+properties, the set of subject, object pairs in a synthetic property are the
+set of pairs of bindings for ?subject and ?object in the solutions of a
+result set.
+
+The SPARQL queries in this extension are always augmented with namespace
+prefix bindings for rdf:, rdfs:, xsd:, and sh: as above.  '''A mechanism for
+augmenting these bindings might be useful.'''
+
+The SPARQL queries in this extension are always run over the data graph.
+(The shapes in templates validate arguments to components and scopes, so the
+data graph for them is the shapes graph.)
 
 === Direct Use of SPARQL Queries ===
 
-The sh:sparql component is the simplest component extension
+SPARQL queries are allowed in shape components via
   sh:sparql SPARQL query
-The SPARQL query for a sh:SPARQL component is the code provided for the
-component augmented as above.   
+The SPARQL query for a sh:sparql component is the query provided, augmented
+as above.    
 
-SPARQL code is allowed as a scope of a shape via
+SPARQL code is allowed in scopes via
   sh:scopeQuery SPARQL query
 The nodes in the scope are the bindings for ?scope in solutions in the
-result set of the query augmented as above run over the data graph.
+result set of the query augmented as above.
 
 '''UNDER REVIEW'''
-SPARQL query is also allowed as path parts.  The bindings of ?subject and
+SPARQL queries are also allowed as path parts.  The bindings of ?subject and
 ?object in solutions of its result set are considered as subjects and
 objects of a synthetic property.  '''This produces truly awful syntax, and
 should be fixed.'''  Note: The derived values equality constraint is
@@ -365,23 +376,22 @@ replaced by an sh:equals with one of the paths using SPARQL code.
 
 === Component Templates ===
 
-Component templates provide components based on paramterized SPARQL code.  A
+Component templates provide components based on parameterized SPARQL code.  A
 component template is a node in the shapes graph that is an RDFS instance of
 sh:ComponentTemplate in the shapes graph.  Each triple in the shapes graph
 whose subject is a shape and whose property is a component template is a
 template component of the shape.
 
-A component template is also used as a shape.  The object of a template
-component triple is validated against the component template considered as a
-shape to ensure that this object is suitable for use by the component
-template.  If the validation fails the template component is syntactically
-illegal.  The sh:propValues components in component templates can also have
-sh:argumentName and sh:argumentDefault triples that are used in the process
-of constructing the query for template components.
+A component template is used as a shape to check the syntactic validity of
+template components.  The object of a template component triple is validated
+against the component template considered as a shape.  If the validation
+fails the template component is syntactically illegal.  The sh:propValues
+components in component templates can also have sh:argumentName and
+sh:argumentDefault triples that are used in the process of constructing the
+query for template components.
 
 Component templates provide SPARQL queries to define the query via 
   sh:templateQuery   parameterized SPARQL query
-The query produces validation results for nodes that violate the component.  
 
 Alternatively the query can be constructed from other properties
   sh:templateFilter  parameterized SPARQL expression
@@ -407,7 +417,8 @@ The actual query for the template component is produced by substitution into
 the parameterized query. Values for all five of the above properties can
 have substrings of the form 
   [expression]
-that are subject to replacement.  Substition expressions can be
+that are treated as substitution expressions subject to replacement.
+Substition expressions can be 
 # a quoted string
 # a simple name, where the name's value in the context is substituted
 # p(name), where the name's value is processed as a path
