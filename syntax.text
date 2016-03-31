@@ -29,7 +29,6 @@ There are a couple of not-significant changes, which could easily be undone:
 # all strings that contain language to be presented to users are rdf:langString, and
 # inverse properties are specified via property paths.
 
-
 This proposal is not quite complete.  Missing bits and questions are shown '''like
 this'''.
 
@@ -52,8 +51,8 @@ bindings:
 
   rdf:  http://www.w3.org/1999/02/22-rdf-syntax-ns#
   rdfs: http://www.w3.org/2000/01/rdf-schema#
-  sh:   http://www.w3.org/ns/shacl#
   xsd:  http://www.w3.org/2001/XMLSchema#
+  sh:   http://www.w3.org/ns/shacl#
 
 SHACL depends on a notion of instance that uses vocabulary from RDF (rdf:type) and
 RDFS (rdfs:subClassOf) but in a way different from both.  A node is a SHACL instance
@@ -79,16 +78,14 @@ The objects of triples with a given subject and predicate are values of the pred
 for the subject.  That subject is said to have these objects for the predicate.
 
 
-== Syntax ==
+== Core Syntax ==
 
 The main SHACL construct is a shape.  A shape is a node in the shapes graph that is
 an RDFS instance of sh:Shape in the shapes graph.
 
-=== Core ===
-
-Shapes in the core of SHACL have
+Shapes in SHACL have
 #zero or more scopes (triples with the shape as subject and sh:scopeNode, sh:scopeClass, sh:scopePropertyObject, sh:scopePropertySubject, sh:scopeAllObjects, or sh:scopeAllSubjects as the predicate),
-#zero or more filters (values of sh:filter) which are themselves shapes,
+#zero or more filters (triples with sh:filter as the predicate), whose objects are themselves shapes,
 #one or more components (triples with the shape as subject and one of the component properties below as property, including associated triples as necessary).
 
 The scopes of a shape select nodes for validation.  Filters further cut down
@@ -140,15 +137,11 @@ The syntax of the various SHACL core components are:
 A path is a path part or a list of path parts.  A SHACL core path part is either an
 IRI or a node with an sh:inverse link.  Ambiguous constructions are not allowed.
 
-Paths don't add all that much extra power.  If paths are removed then sh:propValues
-would be replaced by two constructs, one for properties and one for inverse.  The
-path-comparison constructs would lose some expressive power.
-
 Several other properties of shapes influence SHACL
   sh:severity sh:Info or sh:Warning or sh:Violation
-  sh:name string with language tag
-  sh:description string with language tag
-  sh:message string with language tag
+  sh:name language-tagged string
+  sh:description language-tagged string
+  sh:message language tagged-string
   sh:order decimal literal
   sh:defaultValue node
 
@@ -213,106 +206,13 @@ Example 1 from SHACL document
 Just showing some other syntax.
 
 
-=== Validation results ===
+== Validation results ==
 
 '''TO BE DONE, but no significant changes, if any'''
 
 
-=== SPARQL Extension ===
 
-The first extension mechanism in SHACL is to utilize SPARQL queries to help define
-the results of validation.
-
-SPARQL code is allowed as a component via
-  sh:sparql SPARQL query
-The query produces validation results for values of ?this that do not
-validate against the component.
-
-SPARQL code is allowed as a scope of a shape via
-  sh:scopeQuery SPARQL query
-The query determines the nodes in the scope using the ?scope variable.
-
-UNDER REVIEW
-SPARQL code is also allowed as path parts.  The code determines the values of a
-synthetic property.  '''This produces truly awful syntax, and should be fixed.'''
-Note: The derived values equality constraint is replaced by an sh:equals with one of
-the paths using SPARQL code.
-
-
-The second extension mechanism provides a way of providing parameterized
-SPARQL code for shapes.
-
-Component templates permit the construction of new components based on paramterized
-SPARQL code.  A component template is a node in the shapes graph that is an RDFS
-instance of sh:ComponentTemplate in the shapes graph.
-
-Component templates provide a template for the message of a validation result via 
-  sh:templateMessge string with language tag
-Component templates provide SPARQL code to define the template via 
-  sh:templateFilter  SPARQL expression
-  sh:templatePattern SPARQL pattern
-  sh:templateHaving  SPARQL expression
-  sh:templateQuery  SPARQL query
-  sh:templateMessage string
-
-The sh:templateFilter evaluates to true for ?this values that would validate
-against the component.  The sh:templatePattern eliminates bindings for ?this
-values that would validate against the component.  The sh:templateHaving
-eliminates groups of solutions for ?this that would validate against the
-component.  The sh:templateQuery is a query that returns only validation
-results for nodes that violate the component.  (The first four are
-for convenience only.)
-
-Parameterization of component templates is done by substitution.  Values for
-all five of the above properties can have substrings of the form [expression]
-that are subject to replacement as described in the semantics section.
-
-A component template is also a shape and a property.  The value of a component
-template predicate of a shape in a shape graph is validated against the component
-template considered as a shape.  The propValues constructs in the template can have
-sh:argumentName and sh:argumentDefault values to allow the template access
-to one of the values (usually there should only be one) for the path in the
-propValue.  The built-in name argument can be used to access the entire
-argument for the template.
-
-
-Scope templates permit the construction of new scopes based on parameterized SPARQL
-queries.  A scope template is a node in the shapes graph that is an RDFS instance of
-sh:ScopeTemplate in the shapes graph.
-
-A scope template is also a shape and a property.  The value of a scope template
-predicate of a shape in a shape graph must validate against the scope template
-considered as a shape.
-
-Scope templates provide SPARQL queries to define the template via 
-  sh:sparqlTemplate SPARQL code
-The bindings for $this in the result set that would be returned from the code over
-the data graph in a suitable environment are the nodes in the scope.
-
-Note:  There are no functions yet.
-
-=== Examples ===
-
-  ex:example a sh:ComponentTemplate ;
-    sh:propValues ( ex:predicate [ sh:class rdf:Property;
-    	       		      sh:minCount 1 ; sh:maxCount 1 ] ) ;
-    sh:propValues ( ex:lang [ sh:datatype xs:string ] ) ;
-    sh:sparqlTemplate """... $this ...""" .
-
-  ex:exampleShape a sh:Shape ;
-    ex:example [ ex:predicate ex:p ; ex:lang "de" ; ex:lang "en" ] .
-
-  sh:class a sh:ComponentTemplate ; rdfs:domain sh:Shape ; rdfs:range rdfs:Class ;
-    sh:nodeKind sh:IRI ;
-    sh:templateMessage "Does not have required class [argument]" ;
-    sh:messsage "Classes need to be IRIs" ;
-    sh:templateFilter "EXISTS { ?this rdf:type/rdfs:subClassOf* [argument] }" .
-
-  ex:listexShape a sh:Shape ;
-     ex:listex ( ex:person ex:p2 ) .
-
-
-== Informal Semantics (no recursion) ==
+== Informal Semantics for Core (no recursion) ==
 
 A data graph validates against a shapes graph if the data graph validates
 against every shape in the shapes graph that has at least one scope.
@@ -330,8 +230,6 @@ A sh:scopeAllObjects selects all nodes that are objects of some triple in
 the data graph.
 A sh:scopeAllSubjects selects all nodes that are subjects of some triple in
 the data graph.
-A sh:scopeQuery code selects all nodes bound to $scope in the result set
-that would be produced by evaluating the code over the data graph.
 
 A set of nodes (the input nodes) validates against a shape as follows.
 In-focus nodes are those input nodes which validate against each of the
@@ -422,74 +320,160 @@ are processed similar to path processing in the SPARQL 1.1 Query Language.
 :: Let input_i+1 be the out-of-filter nodes of shape_i for input_i.
 :: Nodes that fail to validate for shape_i on input_i fail for the component, for 1<=i<=n.
 :: Nodes in input_n+1 fail to validate for the component.
-  
-* sh:sparql code
-:: The in-filter nodes that fail to validate are those for which a solution with $severity bound to sh:Violation and $focusNode bound to the node or unbound would be produced when the code is run over the data graph in an environment where $this is bound to the set of in-filter nodes.
 
 
-=== Templates ===
+== SPARQL Extension (REVISED) ==
 
-This is an informal account of how templates would work.  '''There are some details
-that still need to be worked out.'''
+This is a description of the syntax of the SPARQL extension and an account
+of how it works.  The SPARQL extension does not depend on any extensions to
+SPARQL and thus can be used on any RDF graph that can be queried via SPARQL,
+including SPAQL endpoints
 
-==== Component Templates ====
+The SPARQL queries in the SPARQL extension are always augmented with
+standard prefix bindings for rdf, rdfs, xsd, and sh as above.  '''A
+mechanism for augmenting these bindings might be useful.'''
 
-A set of nodes validates against a template component if evaluating the
-SPARQL query for the template component in the validation environment would
-produce no validation results with sh:severity of sh:Violation.  The
-validation environment has $this bound to the set of in-filter nodes of the
-shape.  Extra bindings in solutions contribute to validation results.  Nodes
-in the in-focus fail to validate against the component if there is a
-solution with $severity bound to sh:Violation.
+=== Validation Using SPARQL Queries ===
 
-The SPARQL query is modified by substitution.  Substrings in the template
-code and in the template message that look like [expression] are substituted
-in the current context.  This context always includes 'outer' and 'inner'
-that together produce the correct set of bindings for ?this, 'projection'
-that is used to add extra bindings to the result set to keep track of
-external context, 'group' that is GROUP BY clause that can be used to group
-solutions for ?this, and 'severity' that is the current severity.  To this
-context is added 'argument', which is the object of the shape component, and
-elements for each sh:argumentName found in the sh:propValues for the
-template.
+The SPARQL extension uses solutions in SPARQL result sets as validation
+results.  These solutions have bindings for at least ?this and ?severity.  A
+set of nodes validates against a component in the SPARQL extension if
+evaluating the SPARQL query for the component over the data graph would
+produce no query results with ?severity bound to sh:Violation when joined to
+a result set with solutions having ?this bound to elements of the set.
+Validation fails on nodes that have a solution in the joined result set with
+?this bound to the node and ?severity bound to sh:Violation.
+
+=== Direct Use of SPARQL Queries ===
+
+The sh:sparql component is the simplest component extension
+  sh:sparql SPARQL query
+The SPARQL query for a sh:SPARQL component is the code provided for the
+component augmented as above.   
+
+SPARQL code is allowed as a scope of a shape via
+  sh:scopeQuery SPARQL query
+The nodes in the scope are the bindings for ?scope in solutions in the
+result set of the query augmented as above run over the data graph.
+
+'''UNDER REVIEW'''
+SPARQL query is also allowed as path parts.  The bindings of ?subject and
+?object in solutions of its result set are considered as subjects and
+objects of a synthetic property.  '''This produces truly awful syntax, and
+should be fixed.'''  Note: The derived values equality constraint is
+replaced by an sh:equals with one of the paths using SPARQL code.
+
+=== Component Templates ===
+
+Component templates provide components based on paramterized SPARQL code.  A
+component template is a node in the shapes graph that is an RDFS instance of
+sh:ComponentTemplate in the shapes graph.  Each triple in the shapes graph
+whose subject is a shape and whose property is a component template is a
+template component of the shape.
+
+A component template is also used as a shape.  The object of a template
+component triple is validated against the component template considered as a
+shape to ensure that this object is suitable for use by the component
+template.  If the validation fails the template component is syntactically
+illegal.  The sh:propValues components in component templates can also have
+sh:argumentName and sh:argumentDefault triples that are used in the process
+of constructing the query for template components.
+
+Component templates provide SPARQL queries to define the query via 
+  sh:templateQuery   parameterized SPARQL query
+The query produces validation results for nodes that violate the component.  
+
+Alternatively the query can be constructed from other properties
+  sh:templateFilter  parameterized SPARQL expression
+  sh:templatePattern parameterized SPARQL pattern
+  sh:templateHaving  parameterized SPARQL expression
+  sh:templateMessage parameterized language-tagged string
+The sh:templateFilter evaluates to true for ?this bindings that would
+validate against the component.  The sh:templatePattern eliminates bindings
+for ?this that would validate against the component.  The sh:templateHaving
+eliminates groups of solutions for ?this bindings that would validate
+against the component.  The values for sh:templateMessage are used to
+construct the message part of validation results.  They are all used to
+construct a parameterized query for the component that looks like
+  SELECT [projection] ?this ?message ?severity (?this AS ?object)
+  WHERE { [outer] [inner] <pattern> FILTER ( ! <filter> ) }
+  [group] HAVING <having>
+  VALUES (?message ?severity) { ( <message> [severity] ) }
+where the FILTER ( ! <filter> ) part is only present if there is a value for
+sh:templateFilter and the [group] HAVING <having> part is only present if
+there is a value forsh:templateHaving.
+
+The actual query for the template component is produced by substitution into
+the parameterized query. Values for all five of the above properties can
+have substrings of the form 
+  [expression]
+that are subject to replacement.  Substition expressions can be
+# a quoted string
+# a simple name, where the name's value in the context is substituted
+# p(name), where the name's value is processed as a path
+# s(name), where the name's value is processed as a shape
+# c(path name), where the name's value is processed as a shape to produce a shape for path values
+# l(expression string), where the list values for the value of identifier in expression are processed instead of its values and the results joined with string
+All processing happens in the shapes graph.
+
+The values for names are set up from two sources.  Values for several
+standard names are set up automatically:
+# argument is the object of the template component triple
+# projection is usually a SPARQL variable that serves as a context 
+# outer is usually a SPARQL pattern that produces bindings for the projection variable
+# inner is a SPARQL pattern that produces bindings for ?this
+# group is usually a SPARQL GROUP BY fragment that groups by the projection variable
+# severity is the severity to be used in the component
+
+Other values come from sh:propValues components in the component template that
+have sh:argumentName triples in their shape.  Each such sh:propValues
+component produces a value for the object of its sh:argumentName triple that
+is either one of the values for its path starting from the its argument or
+the value of its sh:argumentDefault triple if there are no value for the path.
 
 '''Note: Having multiple sh:propValues with the same sh:argumentName leads
-to undefined results.'''
+to indeterminate results.'''
 
-'''Note: Having multiple values for an argument path leads to undefined
+'''Note: Having multiple values for an argument path leads to indeterminate
 results.'''
 
-Substition expressions can be
-- a quoted string
-- a simple name, where the name's value in the context is substituted.
-- p(name), where the name's value is processed as a path
-- s(name), where the name's value is processed as a shape
-- c(path name), where the name's value is processed as a shape 
-		to produce a shape for path values
-- l(expression string), where the list values for the value of identifier in
-  expression are processed instead of its values and the results joined with
-  string
+=== Scope Templates ===
 
-The SPARQL query is constructed from values of sh:templatePattern,
-sh:templateFilter, and sh:templateHaving if any of these are present or
-sh:templateSPARQL if not.  In the former case a query like
-  SELECT [projection] ?this ?message ?severity ...
-  WHERE { [outer] [inner] pattern FILTER ( ! filter ) }
-  [group] HAVING having
-  VALUES (?message ?severity) { ( [message] [severity] ) }
-is constructed with the FILTER ... part only present if there is a filter
-and the GROUP BY ... HAVING ... parting only present is theere is a having.
-Otherwise the value for sh:templateQuery is used.   This is then subject to
-substitution as above.
+Scope templates provide scopes based on parameterized SPARQL queries.  A
+scope template is a node in the shapes graph that is an RDFS instance of
+sh:ScopeTemplate in the shapes graph.  Each triple in the shapes graph whose
+subject is a shape and whose property is a scop template is a template scope
+of the shape.  A scope template is also used as a shape in the same way that
+a component template is.
 
+Scope templates provide SPARQL queries to define the query via 
+  sh:templateQuery parameterized SPARQL query
+The query for a template scope is constructed in the same way as for a
+template component except that the alternative query consruction method is
+not used.  As well, the only standard name is argument.
 
-==== Scope Templates ====
+The nodes in the scope are the bindings for ?scope in solutions in the
+result set of the query augmented as above run over the data graph.
 
-The nodes in the scope of a scope template are the bindings for $scope that would be
-produced by evaluating the SPARQL code over the data graph in the scope environment.
-The scope environment is like a validation environment except that it does not have a
-binding for $this.
+=== Examples ===
 
+  ex:example a sh:ComponentTemplate ;
+    sh:propValues ( ex:predicate [ sh:class rdf:Property;
+    	       		      sh:minCount 1 ; sh:maxCount 1 ] ) ;
+    sh:propValues ( ex:lang [ sh:datatype xs:string ] ) ;
+    sh:sparqlTemplate """... ?this ...""" .
+
+  ex:exampleShape a sh:Shape ;
+    ex:example [ ex:predicate ex:p ; ex:lang "de" ; ex:lang "en" ] .
+
+  sh:class a sh:ComponentTemplate ; rdfs:domain sh:Shape ; rdfs:range rdfs:Class ;
+    sh:nodeKind sh:IRI ;
+    sh:templateMessage "Does not have required class [argument]" ;
+    sh:messsage "Classes need to be IRIs" ;
+    sh:templateFilter "EXISTS { ?this rdf:type/rdfs:subClassOf* [argument] }" .
+
+  ex:listexShape a sh:Shape ;
+     ex:listex ( ex:person ex:p2 ) .
 
 
 == Conformance ==

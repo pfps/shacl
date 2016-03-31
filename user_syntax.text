@@ -8,8 +8,8 @@
 ¹ex:child ⊩ ∈ ex:Person ∧ IRI		# parents are people and not blank
 ex:child² ⊩ ∈ ex:Person 		# children are people
 ∈ ex:Patriot ⊩ ⋹ ex:Citizen		# patriots are directly citizens
-ex:password² ⊩ ∈ xs:string ∧ ℓ≤24 ∧ ℓ≥8	# passwords are between 8 and 24 long
-ex:age² ⊩ ∈ xs:integer ∧ ≥0		# ages are non-negative integers
+ex:password² ⊩ ^^xs:string ∧ ℓ≤24 ∧ ℓ≥8	# passwords are between 8 and 24 long
+ex:age² ⊩ ^^xs:integer ∧ ≥0		# ages are non-negative integers
 ex:john ⊩ ex:name ∝ "^John.*" ★ 	# John's name starts with John
 ex:mstatus² ⊩ ∈ { ex:single ex:married ex:divorced }
 					# three marital statuses only
