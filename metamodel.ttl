@@ -3,7 +3,7 @@
 ## provided that all RDFS consequences are included in the shape graph.
 ## An alternative is to change the scopes to property object scopes,
 ## but that doesn't produce useful validation results.
-## See metamodel-2.ttl for a metamodel that does this.
+## See metamodel-alternative.ttl for a metamodel that does this.
 
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -282,3 +282,269 @@ shmm:closedShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:closed sh:closed ) .
 
 
+## PART 3: Extension Language
+
+### Non-template extensions
+
+sh:scopeQuery	a rdf:Property; rdfs:domain sh:Shape; rdfs:range xsd:string ;
+  sh:datatype xsd:string .
+shmm:scopeQueryShape a sh:Shape ; sh:scopeClass sh:Shape ;
+  sh:propValues ( sh:scopeQuery sh:scopeQuery ) .
+
+sh:query	a rdf:Property; a sh:Shape ; rdfs:domain sh:Shape; rdfs:range xsd:string ;
+  sh:datatype xsd:string .
+shmm:queryShape a sh:Shape ; sh:scopeClass sh:Shape ;
+  sh:propValues ( sh:query sh:query ) .
+
+
+### Template extensions
+
+sh:ComponentTemplate a rdfs:Class; rdfs:subClassOf rdf:Property; rdfs:subClassOf sh:Shape.
+
+sh:templateFilter  a rdf:Property ; rdfs:range xsd:string .
+sh:templatePattern a rdf:Property ; rdfs:range xsd:string .
+sh:templateHaving  a rdf:Property ; rdfs:range xsd:string .
+sh:templateQuery   a rdf:Property ; rdfs:range xsd:string .
+sh:templateMessage a rdf:Property ; rdfs:range rdf:langString .
+
+shmm:queryTemplateUniques a sh:Shape ; sh:scopeClass sh:ComponentTemplate ;
+  sh:propValues ( sh:templateFilter  [ a sh:Shape ; sh:maxCount 1 ] ) ;
+  sh:propValues ( sh:templatePattern [ a sh:Shape ; sh:maxCount 1 ] ) ;
+  sh:propValues ( sh:templateHaving  [ a sh:Shape ; sh:maxCount 1 ] ) ;
+  sh:propValues ( sh:templateQuery   [ a sh:Shape ; sh:maxCount 1 ] ) ;
+  sh:propValues ( sh:templateMessage [ a sh:Shape ; sh:uniqueLang true ] ) .
+
+sh:argumentName a rdf:Property ; rdfs:domain sh:Shape ; rdfs:range xsd:string .
+sh:argumentDefault a rdf:Property ; rdfs:domain sh:Shape .
+
+shmm:argumentShape a sh:Shape ; sh:scopeClass sh:Shape ;
+  sh:propValues ( sh:argumentName [ a sh:Shape ; sh:datatype xsd:string ;
+  		  		    sh:minCount 1 ; sh:maxCount 1 ] ) ;
+  sh:propValues ( sh:argumentDefault [ a sh:Shape ; sh:datatype xsd:string ;
+  		  		       sh:maxCount 1 ] ) .
+
+# Implementation of most built-in constructs
+
+sh:in a sh:ComponentTemplate;
+  sh:templateMessage "Does not have any required value"@en ;
+  sh:message "Values cannot be blank nodes"@en ;
+  sh:templateFilter "EXISTS { VALUES ?this { [l(argument)] } }" .
+
+sh:class a sh:ComponentTemplate;
+  sh:templateMessage "Does not have required class [argument]"@en ;
+  sh:message "Classes need to be IRIs"@en ;
+  sh:templateFilter "EXISTS { ?this rdf:type/rdfs:subClassOf* [argument] }" .
+
+sh:classIn a sh:ComponentTemplate ;
+  sh:templateMessage "Does not have any required class [l(argument)]"@en ;
+  sh:message "Classes need to be IRIs"@en ;
+  sh:templateFilter """EXISTS { VALUES ?class { [l(argument)] } 
+    ?this rdf:type/rdfs:subClassOf* ?class . }""" .
+
+sh:datatype a sh:ComponentTemplate ;
+  sh:templateMessage "Does not have required datatype [argument]"@en ;
+  sh:message "Datatypes need to be IRIs"@en ;
+  sh:templateFilter """( isLiteral(?this) && datatype(?this) = [argument] )""" .
+
+sh:datatypeIn a sh:ComponentTemplate ;
+  sh:templateMessage "Does not have any required datatype [l(argument)]"@en ;
+  sh:message "Datatypes need to be IRIs"@en ;
+  sh:templatePattern """BIND ( datatype(?this) AS ?dt ) 
+    FILTER NOT EXISTS { VALUES ?dt { [l(argument)] } }""" .
+
+sh:directType a sh:ComponentTemplate ; 
+  sh:templateMessage "Does not have required direct type [argument]"@en ;
+  sh:message "Classes need to be IRIs"@en ;
+  sh:templateFilter """EXISTS { ?this rdf:type [argument] }""" .
+
+sh:minLength a sh:ComponentTemplate ; 
+  sh:templateMessage "Length too short, must be at least [argument]"@en ;
+  sh:message "Length argument must be integer"@en ;
+  sh:templateFilter """( !isBlank(?this) && STRLEN(STR(?this)) >= [argument] )""" .
+
+sh:maxLength a sh:ComponentTemplate ; 
+  sh:templateMessage "Length too long, must be at most [argument]"@en ;
+  sh:message "Length argument must be integer"@en ;
+  sh:templateFilter "( !isBlank(?this) && STRLEN(STR(?this)) <= [argument] )" .
+
+sh:minInclusive a sh:ComponentTemplate ; 
+  sh:templateMessage "Too small, must be at least [argument]"@en ;
+  sh:message "Minimum must be a literal"@en ;
+  sh:templateFilter "( isLiteral(?this) && ?this >= [argument] )" .
+
+sh:minExclusive a sh:ComponentTemplate ; 
+  sh:templateMessage "Too small, must be greater than [argument]"@en ;
+  sh:message "Minimum must be a literal"@en ;
+  sh:templateFilter "( isLiteral(?this) && ?this > [argument] )" .
+
+sh:maxInclusive a sh:ComponentTemplate ;
+  sh:templateMessage "Too big, must be at most [argument]"@en ;
+  sh:message "Minimum must be a literal"@en ;
+  sh:templateFilter "( isLiteral(?this) && ?this <= [argument] )" .
+
+sh:maxExclusive a sh:ComponentTemplate ;
+  sh:templateMessage "Too big, must be less than [argument]"@en ;
+  sh:message "Minimum must be a literal"@en ;
+  sh:templateFilter "( isLiteral(?this) && ?this < [argument] )" .
+
+sh:nodeKind a sh:ComponentTemplate ; 
+  sh:templateMessage "Not of correct kind [argument]"@en ;
+  sh:message "Has to be sh:BlankNode, sh:IRI, or sh:Literal"@en ;
+  sh:templateFilter """((isIRI(?this) && [argument] = sh:IRI) ||
+         (isLiteral(?this) && [argument] = sh:Literal) ||
+ 	 (isBlank(?this) && [argument] = sh:BlankNode))""" .
+
+sh:pattern a sh:ComponentTemplate ; 
+  sh:propValues ( rdf:first [ a sh:Shape ; sh:argumentName "pattern" ] ) ;
+  sh:propValues ( ( rdf:rest rdf:first ) [ a sh:Shape ; sh:argumentName "flags" ;
+  		    	     	       	     	      	sh:argumentDefault "" ] ) ;
+  sh:templateMessage "Does not match pattern"@en ;
+  sh:message "Has to be a string or a list of two strings"@en ;
+  sh:templateFilter """( !isBlank(?this) && 
+    ( ( ([pattern] = "") && REGEX(STR(?this),[argument],"") ) ||
+      ( ([pattern] != "") && REGEX(STR(?this),[pattern],[flags]) ) ) )""" .
+
+sh:equals a sh:ComponentTemplate ; 
+  sh:propValues (rdf:first [ a sh:Shape ; sh:argumentName "path1" ] ) ; 
+  sh:propValues ((rdf:rest rdf:first) [ a sh:Shape ; sh:argumentName "path2"]); 
+  sh:templateMessage "Path values not equal"@en ;
+  sh:message "Not list of two paths"@en ;
+  sh:templatePattern
+    """{ { { ?this [p(path1)] ?value } MINUS { ?this [p(path2)] ?value }
+  } UNION {
+    { ?this [p(path2)] ?value } MINUS { ?this [p(path1)] ?value } } }""" .
+
+sh:notEquals a sh:ComponentTemplate ; 
+  sh:propValues (rdf:first [ a sh:Shape ; sh:argumentName "path1" ] ) ; 
+  sh:propValues ((rdf:rest rdf:first) [ a sh:Shape ; sh:argumentName "path2"]); 
+  sh:templateMessage "Path values not disjoint"@en ;
+  sh:message "Not list of two paths"@en ;
+  sh:templatePattern """?this [p(path1)] ?value1 . ?this [p(path2)] ?value1 .""" .
+
+sh:lessThan a sh:ComponentTemplate ; 
+  sh:propValues (rdf:first [ a sh:Shape ; sh:argumentName "path1" ] ) ; 
+  sh:propValues ((rdf:rest rdf:first) [ a sh:Shape ; sh:argumentName "path2"]); 
+  sh:templateMessage "First path value too big"@en ;
+  sh:message "Not list of two paths"@en ;
+  sh:templatePattern """?this [p(path1)] ?value1 . ?this [p(path2)] ?value2 .
+        FILTER ( ! (?value1 < ?value2) )""" .
+
+sh:lessThanOrEquals a sh:ComponentTemplate ; 
+  sh:propValues (rdf:first [ a sh:Shape ; sh:argumentName "path1" ] ) ; 
+  sh:propValues ((rdf:rest rdf:first) [ a sh:Shape ; sh:argumentName "path2"]); 
+  sh:templateMessage "First path value too big"@en ;
+  sh:message "Not list of two paths"@en ;
+  sh:templatePattern """?this [p(path1)] ?value1 . ?this [p(path2)] ?value2 .
+        FILTER ( ! (?value1 <= ?value2) )""" .
+
+sh:list a sh:ComponentTemplate ; 
+  sh:templateMessage "For list element"@en ;
+  sh:message "Argument must be a shape"@en ;
+  sh:templateQuery """# LIST
+  SELECT [projection] ?this ?message ([severity] AS ?severity)
+         ?subject ?predicate ?object
+  WHERE { [outer] [inner]
+          { FILTER NOT EXISTS { ?this rdf:rest* rdf:nil .}
+            BIND ( "List does not terminate at rdf:nil" AS ?message )
+            BIND ( ?this AS ?subject )
+          } UNION {
+            ?this rdf:rest* ?tail .
+            FILTER ( ( EXISTS { ?tail rdf:rest ?tail1 . ?tail rdf:rest ?tail2 .
+                                FILTER ( ! sameTerm(?tail1,?tail2) ) } ) ||
+                     ( EXISTS { ?tail rdf:first ?elem1 . ?tail rdf:first ?elem2 .
+                                FILTER ( ! sameTerm(?elem1,?elem2) ) } ) )
+            BIND ( "List has multiple firsts or rests" AS ?message )
+            BIND ( ?this AS ?subject )
+            BIND ( ?tail AS ?object )
+          } UNION {
+            FILTER EXISTS { rdf:nil rdf:rest|rdf:first ?x }
+            BIND ( "rdf:nil has rdf:first or rdf:rest" AS ?message )
+            BIND ( ?this AS ?subject )
+         } UNION { [c("rdf:rest*/rdf:first" argument)] } }""" .
+
+sh:hasValue a sh:ComponentTemplate ; 
+  sh:templateMessage "Missing required value "@en ;
+  sh:message "Value can be anything"@en ;
+  sh:templateQuery """SELECT [projection]
+    ( CONCAT([message],STR([argument])) AS ?message) ( [severity] AS ?severity )
+  WHERE { [outer] 
+    FILTER NOT EXISTS { [inner] FILTER sameTerm(?this,[argument]) } }""".
+
+sh:uniqueLang a sh:ComponentTemplate ; 
+  sh:templateMessage "Values share a language tag"@en ;
+  sh:message "Argument can only be true"@en ;
+  sh:templateQuery """SELECT [projection] ?message ?severity
+  WHERE { [outer] [inner]
+  	  { FILTER ( sameTerm(true,[argument]) ) } # in case validation was not done
+          BIND (lang(?this) AS ?lang)
+          FILTER (isLiteral(?this) && bound(?lang) && ?lang != "") }
+  GROUP BY [projection] ?lang HAVING ( COUNT(?this) > 1 )
+  VALUES (?message ?severity) { ( [message] [severity] ) }""" .
+
+sh:minCount a sh:ComponentTemplate ; 
+  sh:templateMessage "Too few values, need at least [argument]"@en ;
+  sh:message "Minimum count must be non-negative integer"@en ;
+  sh:templateQuery """SELECT [projection] ?message ?severity
+  WHERE { [outer] OPTIONAL { [inner] } }
+  [group] HAVING ( COUNT (DISTINCT ?this) < [argument] )
+  VALUES (?message ?severity) { ( [message] [severity] ) }""" .
+
+sh:maxCount a sh:ComponentTemplate ; 
+  sh:templateMessage "Too many values, want at most [argument]"@en ;
+  sh:message "Maximum count must be non-negative integer"@en ;
+  sh:templateQuery """SELECT [projection] ?message ?severity
+  WHERE { [outer] OPTIONAL { [inner] } }
+  [group] HAVING ( COUNT (DISTINCT ?this) > [argument] )
+  VALUES (?message ?severity) { ( [message] [severity] ) }""" .
+
+sh:shape a sh:ComponentTemplate ; 
+  sh:templateMessage "Shape violation"@en ;
+  sh:message "Shapes must not be literals"@en ;
+  sh:templateQuery """[s(argument)]""" .
+
+sh:not a sh:ComponentTemplate ; 
+  sh:templateMessage "Fails to validate against negated shape"@en ;
+  sh:message "Shapes must not be literals"@en ;
+  sh:templateQuery """SELECT [projection] ?this ?message ?severity
+          ?subject ?property ?object
+   WHERE { { [outer] [inner] 
+           } MINUS { 
+           { SELECT [projection] ?this
+             WHERE { { [s(argument)] } FILTER ( ?severity = sh:Violation ) } } } }
+   VALUES (?message ?severity) { ( [message] [severity] ) }""" .
+
+sh:and a sh:ComponentTemplate ; 
+  sh:templateMessage "AND"@en ;
+  sh:message "Shapes must not be literals"@en ;
+  sh:templateQuery """SELECT [projection] ?this ?message ?severity ?subject ?property ?object
+WHERE { { [l(s(argument) " } UNION { ")] } }""" .
+
+sh:or a sh:ComponentTemplate ; 
+  sh:templateMessage "OR Failure"@en ;
+  sh:message "Shapes must not be literals"@en ;
+  sh:templateQuery """SELECT [projection] ?this ([message] AS ?message) 
+	   ([severity] AS ?severity) ?subject ?predicate ?object
+WHERE { 
+ { SELECT [projection] ?this WHERE { VALUES ( ?this ) { ( UNDEF ) } } }
+ { SELECT [projection] ?this WHERE {
+   [l(s(argument) "} } { SELECT [projection] ?this WHERE {")]
+   } } }"""  .
+
+sh:propValues a sh:ComponentTemplate ;
+  sh:propValues ( rdf:first [ a sh:Shape ; sh:argumentName "path" ] ) ;
+  sh:propValues ( ( rdf:rest rdf:first ) [ a sh:Shape ; sh:argumentName "shape" ] ) ;
+  sh:templateMessage "In path [p(path)]"@en ;
+  sh:message "Argument is path, shape list"@en ;
+  sh:templateQuery """[c(p(path) shape)]""" .
+
+sh:closed a sh:ComponentTemplate ; 
+  sh:templateMessage "Value found for disallowed property"@en ;
+  sh:message "Closed properties need to be IRIs"@en ;
+  sh:templateFilter """( ! EXISTS { ?this !([l(p(argument) "|")]) ?value } )""" .
+
+sh:query a sh:ComponentTemplate ; 
+  sh:templateMessage "Query component failure"@en ;
+  sh:message "Queries need to be strings"@en ;
+  sh:templateQuery """[argument]""" .
+
+# sh:partition not possible because partition tears shapes apart
