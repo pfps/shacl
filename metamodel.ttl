@@ -5,9 +5,9 @@
 ## but that doesn't produce useful validation results.
 ## See metamodel-2.ttl for a metamodel that does this.
 
-@prefix xs: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix shmm: <http://www.w3.org/ns/shaclmm#> .
 
@@ -20,7 +20,7 @@ sh:severity     a rdf:Property .
 
 sh:name         a rdf:Property ; rdfs:domain sh:Shape ; rdfs:range rdf:langString .
 sh:description  a rdf:Property ; rdfs:domain sh:Shape ; rdfs:range rdf:langString .
-sh:order        a rdf:Property ; rdfs:range xs:decimal .
+sh:order        a rdf:Property ; rdfs:range xsd:decimal .
 sh:group	a rdf:Property ; rdfs:domain sh:Shape ; rdfs:range sh:PropertyGroup .
 sh:defaultValue a rdf:Property ; rdfs:domain sh:Shape .
 
@@ -28,14 +28,14 @@ shmm:shapeOtherShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:severity [ a sh:Shape ; sh:in ( sh:Info sh:Warning sh:Violation ) ] ) ;
   sh:propValues ( sh:name [ a sh:Shape ; sh:uniqueLang true ] );
   sh:propValues ( sh:description [ a sh:Shape ; sh:uniqueLang true ] );
-  sh:propValues ( sh:order [ a sh:Shape ; sh:datatype xs:decimal ; sh:maxCount 1 ] ) ;
+  sh:propValues ( sh:order [ a sh:Shape ; sh:datatype xsd:decimal ; sh:maxCount 1 ] ) ;
   sh:propValues ( sh:group [ a sh:Shape ; sh:class sh:PropertyGroup ] ) ;
   sh:propValues ( sh:defaultValue [ a sh:Shape ; sh:maxCount 1 ] ) .
 
 sh:PropertyGroup a rdfs:Class .
 
 shmm:shapePropertyGroup a sh:Shape ; sh:scopeClass sh:PropertyGroup ;
-  sh:propValues ( sh:order [ a sh:Shape ; sh:datatype xs:decimal ; sh:maxCount 1 ] ) .
+  sh:propValues ( sh:order [ a sh:Shape ; sh:datatype xsd:decimal ; sh:maxCount 1 ] ) .
 
 sh:inverse      a rdf:Property ; rdfs:range rdf:Property .
 
@@ -49,7 +49,7 @@ sh:sourceComponent  a rdf:Property ; rdfs:domain sh:ValidationResult .
 sh:sourceShape      a rdf:Property ; rdfs:domain sh:ValidationResult ; rdfs:range sh:Shape .
 sh:sourceTemplate   a rdf:Property ; rdfs:domain sh:ValidationResult ; rdfs:range sh:ComponentTemplate .
 sh:detail           a rdf:Property ; rdfs:domain sh:ValidationResult .
-sh:message          a rdf:Property ; rdfs:domain sh:ValidationResult ; rdfs:range rdf:LangString .
+sh:message          a rdf:Property ; rdfs:range rdf:LangString .
 
 shmm:ValidationResultSyntax a sh:Shape ; sh:scopeClass sh:ValidationResult ;
   sh:propValues ( sh:focusNode [ a sh:Shape ; sh:maxCount 1 ] ) ;
@@ -65,28 +65,45 @@ shmm:ValidationResultSyntax a sh:Shape ; sh:scopeClass sh:ValidationResult ;
 
 ## PART 2: Description of built-ins, for validation
 
-# properties that are not components
-sh:scopeClass           a rdf:Property; rdfs:domain sh:Shape; rdfs:range rdfs:Class .
-sh:scopeNode            a rdf:Property; rdfs:domain sh:Shape .
-sh:scopePropertyObject  a rdf:Property; rdfs:domain sh:Shape; rdfs:range rdf:Property.
-sh:scopePropertySubject a rdf:Property; rdfs:domain sh:Shape; rdfs:range rdf:Property.
-sh:scopeAllObjects      a rdf:Property; rdfs:domain sh:Shape; rdfs:range xs:boolean .
-sh:scopeAllSubjects     a rdf:Property; rdfs:domain sh:Shape; rdfs:range xs:boolean .
-sh:scopeSPARQL          a rdf:Property; rdfs:domain sh:Shape; rdfs:range xs:string .
-sh:filter               a rdf:Property; rdfs:domain sh:Shape; rdfs:range sh:Shape .
-
 shmm:notBlank a sh:Shape ;
   sh:or ( [ a sh:Shape ; sh:nodeKind sh:IRI ] [ a sh:Shape ; sh:nodeKind sh:Literal ] ) .
 
-shmm:scopeShape a sh:Shape ; sh:scopeClass sh:Shape ;
-  sh:propValues ( sh:scopeClass [ a sh:Shape ; sh:nodeKind sh:IRI ] ) ;
-  sh:propValues ( sh:scopeNode shmm:notBlank ) ;
-  sh:propValues ( sh:scopePropertyObject shmm:notBlank ) ;
-  sh:propValues ( sh:scopePropertySubject shmm:notBlank ) ;
-  sh:propValues ( sh:scopeAllObjects [ a sh:Shape ; sh:in ( true ) ] ) ;
-  sh:propValues ( sh:scopeAllSubjects [ a sh:Shape ; sh:in ( true ) ] ) ;
-  sh:propValues ( sh:scopeSPARQL [ a sh:Shape ; sh:datatype xs:string ] ) ;
-  sh:propValues ( sh:filter [ a sh:Shape ; sh:class sh:Shape ] ) .
+# scopes
+sh:scopeClass           a rdf:Property; a sh:Shape; rdfs:domain sh:Shape; rdfs:range rdfs:Class ;
+  sh:nodeKind sh:IRI .
+shmm:scopeClassShape a sh:Shape ; sh:scopeClass sh:Shape ;
+  sh:propValues ( sh:minExclusive sh:minExclusive ) .
+
+sh:scopeNode            a rdf:Property; a sh:Shape; rdfs:domain sh:Shape ;
+  sh:shape shmm:notBlank .
+shmm:scopeNodeShape a sh:Shape ; sh:scopeClass sh:Shape ;
+  sh:propValues ( sh:scopeNode sh:scopeNode ) .
+
+sh:scopePropertyObject a rdf:Property; a sh:Shape; rdfs:domain sh:Shape; rdfs:range rdf:Property;
+  sh:shape shmm:notBlank .
+shmm:scopePropertyObjectShape a sh:Shape ; sh:scopeClass sh:Shape ;
+  sh:propValues ( sh:scopePropertyObject sh:scopePropertyObject ) .
+
+sh:scopePropertySubject a rdf:Property; a sh:Shape; rdfs:domain sh:Shape; rdfs:range rdf:Property;
+  sh:shape shmm:notBlank .
+shmm:scopePropertySubjectShape a sh:Shape ; sh:scopeClass sh:Shape ;
+  sh:propValues ( sh:scopePropertySubject sh:scopePropertySubject ) .
+
+sh:scopeAllObjects      a rdf:Property; a sh:Shape; rdfs:domain sh:Shape; rdfs:range xsd:boolean ;
+  sh:in ( true ) .
+shmm:scopeAllObjectsShape a sh:Shape ; sh:scopeClass sh:Shape ;
+  sh:propValues ( sh:scopeAllObjects sh:scopeAllObjects ) .
+
+sh:scopeAllSubjects     a rdf:Property; a sh:Shape; rdfs:domain sh:Shape; rdfs:range xsd:boolean ;
+  sh:in ( true ) .
+shmm:scopeAllSubjectsShape a sh:Shape ; sh:scopeClass sh:Shape ;
+  sh:propValues ( sh:scopeAllSubjects sh:scopeAllSubjects ) .
+
+sh:filter               a rdf:Property; a sh:Shape; rdfs:domain sh:Shape; rdfs:range sh:Shape ;
+  sh:class sh:Shape .
+shmm:filterShape a sh:Shape ; sh:scopeClass sh:Shape ;
+  sh:propValues ( sh:filter sh:filter ) .
+
 
 # Shapes for paths
 shmm:pathShape a sh:Shape ;
@@ -99,154 +116,154 @@ shmm:inverseShape a sh:Shape ;
  sh:propValues ( sh:inverse [ a sh:Shape ; sh:nodeKind sh:IRI ;
  	       	 	      sh:minCount 1 ; sh:maxCount 1 ] ) .
 
-sh:Component a rdfs:Class ; rdfs:subClassOf rdf:Property ; rdfs:subClassOf sh:Shape .
+# components
 
-sh:in a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+sh:in a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
   sh:list shmm:notBlank .
 shmm:inShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:in sh:in ) .
 
-sh:class a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdfs:Class ;
+sh:class a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdfs:Class ;
   sh:nodeKind sh:IRI .
 shmm:classShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:class sh:class ) .
 
-sh:classIn a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+sh:classIn a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
   sh:list [ a sh:Shape ; sh:nodeKind sh:IRI ] .
 shmm:classInShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:classIn sh:classIn ) .
 
-sh:datatype a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdfs:Datatype ;
+sh:datatype a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdfs:Datatype ;
   sh:nodeKind sh:IRI .
 shmm:datatypeShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:datatype sh:datatype ) .
 
-sh:datatypeIn a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+sh:datatypeIn a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
   sh:list [ a sh:Shape ; sh:nodeKind sh:IRI ] .
 shmm:datatypeInShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:datatypeIn sh:datatypeIn ) .
 
-sh:directType a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdfs:Class ;
+sh:directType a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdfs:Class ;
   sh:nodeKind sh:IRI .
 shmm:directTypeShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:directType sh:directType ) .
 
-sh:minLength a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range xs:integer ;
-  sh:datatype xs:integer ;
+sh:minLength a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range xsd:integer ;
+  sh:datatype xsd:integer ;
   sh:minInclusive 0 .
 shmm:minLengthShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:minLength sh:minLength ) .
 
-sh:maxLength a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range xs:integer ;
-  sh:datatype xs:integer ;
+sh:maxLength a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range xsd:integer ;
+  sh:datatype xsd:integer ;
   sh:minInclusive 0 .
 shmm:maxLengthShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:maxLength sh:maxLength ) .
 
-sh:minInclusive a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdfs:Literal ;
+sh:minInclusive a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdfs:Literal ;
   sh:nodeKind sh:Literal .
 shmm:minInclusiveShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:minInclusive sh:minInclusive ) .
 
-sh:minExclusive a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdfs:Literal ;
+sh:minExclusive a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdfs:Literal ;
   sh:nodeKind sh:Literal .
 shmm:minExclusiveShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:minExclusive sh:minExclusive ) .
 
-sh:maxInclusive a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdfs:Literal ;
+sh:maxInclusive a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdfs:Literal ;
   sh:nodeKind sh:Literal .
 shmm:maxInclusiveShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:maxInclusive sh:maxInclusive ) .
 
-sh:maxExclusive a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdfs:Literal ;
+sh:maxExclusive a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdfs:Literal ;
   sh:nodeKind sh:Literal .
 shmm:maxExclusiveShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:maxExclusive sh:maxExclusive ) .
 
-sh:nodeKind a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ;
+sh:nodeKind a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ;
   sh:in ( sh:BlankNode sh:IRI sh:Literal ) .
 shmm:nodeKindShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:nodeKind sh:nodeKind ) .
 
-sh:pattern a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; 
-  sh:or ( [ a sh:Shape ; sh:list [ a sh:Shape ; sh:datatype xs:string ] ;
+sh:pattern a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; 
+  sh:or ( [ a sh:Shape ; sh:list [ a sh:Shape ; sh:datatype xsd:string ] ;
             sh:propValues ( ( rdf:rest rdf:rest ) [ a sh:Shape ; sh:hasValue rdf:nil ] ) ] 
-	  [ a sh:Shape ; sh:datatype xs:string ] ) .
+	  [ a sh:Shape ; sh:datatype xsd:string ] ) .
 shmm:patternShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:pattern sh:pattern ) .
 
-sh:equals a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+sh:equals a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
   sh:list shmm:pathShape ;
   sh:propValues ((rdf:rest rdf:rest) [ a sh:Shape ; sh:hasValue rdf:nil ] ) .
 shmm:equalsShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:equals sh:equals ) .
 
-sh:notEquals a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+sh:notEquals a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
   sh:list shmm:pathShape ;
   sh:propValues ((rdf:rest rdf:rest) [ a sh:Shape ; sh:hasValue rdf:nil ] ) .
 shmm:notEqualsShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:notEquals sh:notEquals ) .
 
-sh:lessThan a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+sh:lessThan a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
   sh:propValues ((rdf:rest rdf:rest) [ a sh:Shape ; sh:hasValue rdf:nil ] ) ;
   sh:list shmm:pathShape .
 shmm:lessThanShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:lessThan sh:lessThan ) .
 
-sh:lessThanOrEquals a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+sh:lessThanOrEquals a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
   sh:list shmm:pathShape ;
   sh:propValues ((rdf:rest rdf:rest) [ a sh:Shape ; sh:hasValue rdf:nil ] ) .
 shmm:lessThanOrEqualsShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:lessThanOrEquals sh:lessThanOrEquals ) .
 
-sh:list a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range sh:Shape ;
+sh:list a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range sh:Shape ;
   sh:class sh:Shape .
 shmm:listShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:list sh:list ) .
 
-sh:hasValue a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ;
+sh:hasValue a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ;
   sh:shape shmm:notBlank .
 shmm:hasValueShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:hasValue sh:hasValue ) .
 
-sh:uniqueLang a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; 
+sh:uniqueLang a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; 
   sh:in ( true ) .
 shmm:uniqueLangShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:uniqueLang sh:uniqueLang ) .
 
-sh:minCount a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range xs:integer ;
-  sh:datatype xs:integer ;
+sh:minCount a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range xsd:integer ;
+  sh:datatype xsd:integer ;
   sh:minInclusive 0 .
 shmm:minCountShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:minCount sh:minCount ) .
 
-sh:maxCount a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range xs:integer ;
-  sh:datatype xs:integer ;
+sh:maxCount a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range xsd:integer ;
+  sh:datatype xsd:integer ;
   sh:minInclusive 0 .
 shmm:maxCountShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:maxCount sh:maxCount ) .
 
-sh:shape a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range sh:Shape ;
+sh:shape a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range sh:Shape ;
   sh:class sh:Shape .
 shmm:shapeShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:shape sh:shape ) .
 
-sh:not a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range sh:Shape ;
+sh:not a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range sh:Shape ;
   sh:class sh:Shape .
 shmm:notShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:not sh:not ) .
 
-sh:and a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+sh:and a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
   sh:list [ a sh:Shape ; sh:class sh:Shape ] .
 shmm:andShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:and sh:and ) .
 
-sh:or a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+sh:or a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
   sh:list [ a sh:Shape ; sh:class sh:Shape ] .
 shmm:orShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:or sh:or ) .
 
-sh:propValues a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+sh:propValues a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
   sh:list [ a sh:Shape ] ;
   sh:propValues ( ( rdf:rest rdf:rest ) [ a sh:Shape ; sh:hasValue rdf:nil ] ) ;
   sh:propValues ( rdf:first shmm:pathShape ) ;
@@ -254,12 +271,12 @@ sh:propValues a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rd
 shmm:propValuesShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:propValues sh:propValues ) .
 
-sh:partition a sh:Component ; a sh:Shape ;  rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+sh:partition a rdf:Property ; a sh:Shape ;  rdfs:domain sh:Shape ; rdfs:range rdf:List ;
   sh:list [ a sh:Shape ; sh:class sh:Shape ] .
 shmm:partitionShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:partition sh:partition ) .
 
-sh:closed a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+sh:closed a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
   sh:list [ a sh:Shape ; sh:or ( [ a sh:Shape ; sh:nodeKind sh:IRI ] shmm:inverseShape ) ] .
 shmm:closedShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:closed sh:closed ) .
