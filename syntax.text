@@ -355,25 +355,6 @@ The SPARQL queries in this extension are always run over the data graph.
 (The shapes in templates validate arguments to components and scopes, so the
 data graph for them is the shapes graph.)
 
-=== Direct Use of SPARQL Queries ===
-
-SPARQL queries are allowed in shape components via
-  sh:sparql SPARQL query
-The SPARQL query for a sh:sparql component is the query provided, augmented
-as above.    
-
-SPARQL code is allowed in scopes via
-  sh:scopeQuery SPARQL query
-The nodes in the scope are the bindings for ?scope in solutions in the
-result set of the query augmented as above.
-
-'''UNDER REVIEW'''
-SPARQL queries are also allowed as path parts.  The bindings of ?subject and
-?object in solutions of its result set are considered as subjects and
-objects of a synthetic property.  '''This produces truly awful syntax, and
-should be fixed.'''  Note: The derived values equality constraint is
-replaced by an sh:equals with one of the paths using SPARQL code.
-
 === Component Templates ===
 
 Component templates provide components based on parameterized SPARQL code.  A
@@ -462,9 +443,27 @@ Scope templates provide SPARQL queries to define the query via
 The query for a template scope is constructed in the same way as for a
 template component except that the alternative query consruction method is
 not used.  As well, the only standard name is argument.
-
+o
 The nodes in the scope are the bindings for ?scope in solutions in the
 result set of the query augmented as above run over the data graph.
+
+=== Direct Use of SPARQL Queries ===
+
+SPARQL queries are directly allowed in shape components via
+  sh:query SPARQL query
+The SPARQL query for a sh:sparql component is the provided query with no
+substitutions. 
+
+SPARQL queries are directly allowed in scopes via
+  sh:scopeQuery SPARQL query
+The SPARQL query for a sh:scopeQuery scope is produced with no substitution.
+
+'''UNDER REVIEW'''
+SPARQL queries are also allowed as path parts.  The bindings of ?subject and
+?object in solutions of its result set are considered as subjects and
+objects of a synthetic property.  '''This produces truly awful syntax, and
+should be fixed.'''  Note: The derived values equality constraint is
+replaced by an sh:equals with one of the paths using SPARQL code.
 
 === Examples ===
 
