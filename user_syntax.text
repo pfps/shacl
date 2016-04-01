@@ -1,22 +1,20 @@
 		A User-Friendly Syntax for Core SHACL
 
+
 This is a user-friendly syntax for the core of SHACL that tries to align
-directly with the RDF syntax for SHACL.   It would be possible to modify the
-syntax to come up with a more standard treatment of conjunction,
-disjunction, and negation but that syntax would not align as closely with
-the RDF syntax.
+directly with my SHACL RDF syntax.
 
 
 	Example    				Description
 
 ∈ ex:Person ⊩ |≤27|			# there are at most 27 people
-¹ex:child ⊩ ∋ ex:john			# parents include John
-¹ex:child ⊩ ∈ ex:Person ∧ IRI		# parents are people and not blank
-ex:child² ⊩ ∈ ex:Person 		# children are people
+¹ex:child ⊩ ∋ ex:john			# child subjects include John
+¹ex:child ⊩ ∈ ex:Person ∧ IRI		# ... are people and not blank
+ex:child² ⊩ ∈ ex:Person 		# child objects are people
 ∈ ex:Patriot ⊩ ⋹ ex:Citizen		# patriots are directly citizens
 ex:password² ⊩ ^^xs:string ∧ ℓ≤24 ∧ ℓ≥8	# passwords are between 8 and 24 long
 ex:age² ⊩ ^^xs:integer ∧ ≥0		# ages are non-negative integers
-ex:john ⊩ ex:name ∝ "^John.*" ★ 	# John's name starts with John
+ex:john ⊩ ex:name ∝ "^John.*" ★ 	# John's name starts with "John"
 ex:mstatus² ⊩ ∈ { ex:single ex:married ex:divorced }
 					# three marital statuses only
 ex:Person ⊩ ex:mstatus ∝ |=1|		# people have one marital status
@@ -31,15 +29,15 @@ ex:Person ⊩ ex:mstatus ∝ ∋ ex:single → ex:spouse ∝ |≤0|
 	ex:name ∝ ∈ rdf:langString ∧	# ... names are lang-tagged strings
 	ex:name ∝ ➀			# ... have only one name per language
 ∈ ex:Person ⊩
-  ( ex:spouse ∝ |≤0| →	ex:mstatus ∝ ( |≥1| ∧ ∈{ex:single ex:divorced} ) ) ∖
-  ( ex:spouse ∝ |≤1| →	ex:mstatus ∝ ( |≥1| ∧ ∈{ex:married} ) ) ∖
-  ( |≤3| ) ∖			# people with no spouse are single or divorced
+  ( ( ex:spouse ∝ |≤0| → ex:mstatus ∝ ( |≥1| ∧ ∈{ex:single ex:divorced} ) ) ∖
+    ( ex:spouse ∝ |≤1| → ex:mstatus ∝ ( |≥1| ∧ ∈{ex:married} ) ) ∖
+    |≤3| ∖ )      		# people with no spouse are single or divorced
 				# people with one spouse are married
 				# and there are at most three people left over
 ∈ ex:Isolated ⊩ ⟦ rdf:type ⟧		# isolated nodes have only types
 ∈ ex:nonIsolated ⊩ ¬ ⟦ rdf:type ⟧	# non-isolated nodes have other values
 sh:partShape ≡ (IRI ∨ sh:inverse ∝ IRI)	# parts are properties or inverses
-sh:pathShape ≡ ∈ sh:path ⊩ ( sh:partShape ∨ [ sh:partShape ] )
+sh:pathShape ≡ ∈ sh:path ⊩ ( sh:partShape ∨ ⦇ sh:partShape ⦈ )
 					# paths are parts or lists of parts
 
 
@@ -55,10 +53,6 @@ definition::= name '≡' shape			# refer to shape by name
 scopedShape ::= scope ( '∪' scope )* '⊩' shape
 		# set of all nodes in any scope validates against shape
 
-shape	  ::= ( filter ( '∧' filter )* '→' )? component ( '∧' component )*
-		# subset of nodes that validate against all filters
-		# validates against each component
-
 scope	  ::= value				# the value
 	    | '∈' class				# SHACL instances of class
 	    | '¹' property			# subjects of property
@@ -66,20 +60,24 @@ scope	  ::= value				# the value
 	    | '¹' '?'				# all subjects
 	    | '?' '²'				# all objects
 
+shape	  ::= ( filter ( '∧' filter )* '→' )? component ( '∧' component )*
+		# set of nodes that validate against all filters
+		# validates against each component
+
+filter	  ::= component				# nodes that validate vs shape
+
 component ::= name				# validate against named shape
-	    | '(' shape ')'			# validate against shape
 	    | '¬' component			# doesn't validate ag. comp.
-	    | '(' component ('∨'component)+ ')' # validate against some comp.
-	    | '∈' class ( '∪' class )*		# SHACL instance of some cl.
+	    | '∈' class ( '∪' class )*		# SHACL instance of some class
 	    | '^^' datatype ( '∪' datatype )*	# has one of datatypes
 	    | '∈' '{' value* '}'		# is one of values
 	    | '⋹' class  			# has rdf:type of class
 	    | 'ℓ' '≤' nonnegativeInteger 	# maximum string length
 	    | 'ℓ' '≥' nonnegativeInteger 	# minimum string length
-	    | '>' Literal			# exclusive minimum
-	    | '≥' Literal			# inclusive minimum
-	    | '<' Literal			# exclusive maximum
-	    | '≤' Literal			# inclusive maximum
+	    | '>' literal			# exclusive minimum
+	    | '≥' literal			# inclusive minimum
+	    | '<' literal			# exclusive maximum
+	    | '≤' literal			# inclusive maximum
 	    | 'IRI' | 'Literal' | 'BlankNode'	# kind of node
 	    | regex '★' ( string )?		# matches pattern (with flags)
 	    | path '=' path			# path values the same
@@ -87,21 +85,22 @@ component ::= name				# validate against named shape
 	    | path '<' path			# path1 values < path2 values
 	    | path '≤' path			# path1 values ≤ path2 values
 	    | path '∝' component		# path values in shape
-	    | '[' shape ']'			# list members in shape
+	    | '⦇' shape '⦈'			# list members in shape
 	    | '⟦' pathpart * '⟧'		# no other property has values
 	    | '∋' value				# set contains value
 	    | '|' '≥' nonnegativeInteger '|'	# minimum size of set
 	    | '|' '≤' nonnegativeInteger '|'	# maximum size of set
 	    | '|' '=' nonnegativeInteger '|'	# exact size of set
 	    | '➀'				# only one value per language
-	    | ( component '∖' ) +		# partition the set
+	    | '(' shape ')'			# validate against shape
+	    | '(' component ('∨'component)+ ')'	# validate against one or more
+	    | '(' ( component '∖' ) + ')'	# partition - see below
 		# The initial remnant is the entire set being validated.
 		# The next remnant is the subset of the current one that fails
 		# to validate against the filter of the respective component.
 		# The final remnant is empty.
 		# Each remnant validates against the respective component.
-
-filter	  ::= component				# nodes that validate vs shape
+⦅
 
 path	  ::= pathpart +			# composition
 pathpart  ::= property
@@ -110,7 +109,7 @@ pathpart  ::= property
 class	  ::= name				# a class
 datatype  ::= name				# a datatype
 property  ::= name				# a property
-value	  ::= name | Literal			# object
+value	  ::= name | literal			# object
 
 regex	  ::= string				# regular expression
 
@@ -120,7 +119,15 @@ IRI	  ::= '<' ucharacter '>'
 
 prefixName		as per Turtle
 name			as per Turtle
-Literal   		as per Turtle
+literal   		as per Turtle
 
 string			as per usual
 nonnegativeInteger	as per usual
+
+
+
+	Possible Tweaks
+
+It would be possible to modify the syntax to come up with a more standard
+treatment of conjunction, disjunction, and negation but that syntax would
+not align as closely with the RDF syntax.

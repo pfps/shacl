@@ -1,5 +1,6 @@
 # python3
 # Parsing of user syntax
+# Needs tweaking to handle recent changes
 
 import pyparsing as pp
 
@@ -81,7 +82,7 @@ primary <<   ( pp.Or ( [ atomic ,
                       ( pp.Literal('¬')('token') + pp.Group(primary)('component') ) ,
  	              ( path.setResultsName('path') + pp.Literal('∝')('token') +
                         pp.Group(primary)('component') ) ,
- 	              ( pp.Literal('[')('token') + pp.Group(primary)('component') + ']' ) ,
+ 	              ( pp.Literal('⦇')('token') + pp.Group(primary)('component') + '⦈' ) ,
                       ( pp.Literal('(').suppress() + disjunction +
                         pp.Literal(')').suppress() ) ] ) )
 
