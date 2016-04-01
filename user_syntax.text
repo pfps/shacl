@@ -67,7 +67,6 @@ shape	  ::= ( filter ( '∧' filter )* '→' )? component ( '∧' component )*
 filter	  ::= component				# nodes that validate vs shape
 
 component ::= name				# validate against named shape
-	    | '¬' component			# doesn't validate ag. comp.
 	    | '∈' class ( '∪' class )*		# SHACL instance of some class
 	    | '^^' datatype ( '∪' datatype )*	# has one of datatypes
 	    | '∈' '{' value* '}'		# is one of values
@@ -84,14 +83,15 @@ component ::= name				# validate against named shape
 	    | path '∅' path			# path values disjoint
 	    | path '<' path			# path1 values < path2 values
 	    | path '≤' path			# path1 values ≤ path2 values
-	    | path '∝' component		# path values in shape
-	    | '⦇' shape '⦈'			# list members in shape
 	    | '⟦' pathpart * '⟧'		# no other property has values
 	    | '∋' value				# set contains value
 	    | '|' '≥' nonnegativeInteger '|'	# minimum size of set
 	    | '|' '≤' nonnegativeInteger '|'	# maximum size of set
 	    | '|' '=' nonnegativeInteger '|'	# exact size of set
 	    | '➀'				# only one value per language
+	    | '¬' component			# doesn't validate ag. comp.
+	    | path '∝' component		# path values in shape
+	    | '⦇' shape '⦈'			# list members in shape
 	    | '(' shape ')'			# validate against shape
 	    | '(' component ('∨'component)+ ')'	# validate against one or more
 	    | '(' ( component '∖' ) + ')'	# partition - see below

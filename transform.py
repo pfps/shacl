@@ -202,7 +202,7 @@ def transformComponent(component,node=None) :
         else: print ( "ILLEGAL SYNTAX in |", component.dump() )
     elif component.token == "➀" :
         shapesGraph.add( (node,SH.uniqueLang,Literal("true",datatype=XSD.boolean)) )
-    elif component.token == "[" :
+    elif component.token == "⦇" :
         shape = transformComponent(component[1])
         shapesGraph.add( (node,SH.list,shape) )        
     elif component.token == "∝" :
@@ -249,8 +249,8 @@ transformSHACL( "ex:bar ≡ ∈ ex:class")
 transformSHACL( "ex:s01 ≡ ℓ ≤ 57 → ∈ ex:class")
 transformSHACL( "ex:s02 ≡ ¹ex:property ∪ ex:prop² ⊩ ℓ ≤ 5 → ∈ ex:class" )
 transformSHACL( "ex:s03 ≡ ¹? ∪ ?² ⊩ ℓ ≤ 6 ∧ ∈ ex:classx" )
-transformSHACL( "ex:s04 ≡ ∈ ex:scopeclass ⊩ "
-		"(ℓ ≤ 5 → ∈ ex:class) ∖ ∈ ex:classf ∖ → ℓ ≤ 6 ∧ ∈ ex:classx" )
+transformSHACL( "ex:s04 ≡ ∈ ex:scopeclass ⊩ " +
+		"( (ℓ ≤ 5 → ∈ ex:class) ∖ ∈ ex:classf ∖ ) → ℓ ≤ 6 ∧ ∈ ex:classx" )
 transformSHACL( "ex:s05 ≡ ¹ex:property ∪ ¹ex:prop ⊩ ∈ ex:classf → ℓ ≤ 6 ∧ ex:s1" )
 transformSHACL( "ex:s06 ≡ ¹ex:property ∪ ¹ex:prop ⊩ ex:s1 → <00079 " )
 transformSHACL( "ex:s07 ≡ ¹ex:property ∪ ¹ex:prop ⊩ ex:s1 → >77.700 " )
@@ -259,15 +259,17 @@ transformSHACL( "ex:s09 ≡ ¹ex:property ∪ ¹ex:prop ⊩ >-5 → <.7 " )
 transformSHACL( "ex:s10 ≡ ¹ex:property ∪ ¹ex:prop ⊩ <5 → <7.e2 " )
 transformSHACL( 'ex:s11 ≡ ¹ex:property ∪ ¹ex:prop ⊩ <"HI" → >-7 ' )
 transformSHACL( 'ex:s12 ≡ ¹ex:property ∪ ¹ex:prop ⊩ <"BYE"@en ∧ >6 → <7 ∧ >8' )
-transformSHACL( 'ex:s13 ≡ ¹ex:property ∪ ¹ex:prop ⊩ <"dtyp"^^xsd:string ∧ >6 → (<7∨>8 )' )
-transformSHACL( "ex:s14 ≡ ¹ex:property ∪ ¹ex:prop ⊩ <true∧>false → ¬(<7∨>9)∧(>5→≤4)∖≥2∖" )
+transformSHACL( 'ex:s13 ≡ ¹ex:property ∪ ¹ex:prop ⊩ <"dtyp"^^xsd:string ∧ >6 → ( <7 ∨ >8 )' )
+transformSHACL( "ex:s14 ≡ ¹ex:property ∪ ¹ex:prop ⊩ <true∧>false → ¬(<7∨>9)∧((>5→≤4)∖≥2∖)" )
 transformSHACL( "ex:s15 ≡ <5 ∧ >6 → ex:p1 = ex:p2" )
 transformSHACL( "ex:s16 ≡ <5 ∧ >6 → ex:p1 ex:p3 = ex:p4⁻¹ ex:p2" )
 transformSHACL( "ex:s17 ≡ <5 ∧ >6 → ex:p1 ex:p3 = ex:p5 ex:p4⁻¹ ex:p2" )
 transformSHACL( "ex:s18 ≡ <5 ∧ >6 → ex:p1 ex:p3 ∅ ex:p5 ex:p4⁻¹ ex:p2" )
 transformSHACL( "ex:s19 ≡ <5 ∧ >6 → ex:p1 ex:p3 < ex:p5 ex:p4⁻¹ ex:p2" )
 transformSHACL( "ex:s20 ≡ <5 ∧ >6 → ex:p1 ex:p3 ≤ ex:p5 ex:p4⁻¹ ex:p2" )
-transformSHACL( "ex:s21 ≡ <5 ∧ >6 → ex:p5 ex:p4⁻¹ ex:p2 ∝ ex:s1" )
+transformSHACL( "ex:s21 ≡ ex:p2 ∝ ex:s1" )
+transformSHACL( "ex:s21a ≡ <5 ∧ >6 → ex:p2 ∝ ex:s1" )
+transformSHACL( "ex:s21b ≡ <5 ∧ >6 → ex:p5 ex:p4⁻¹ ex:p2 ∝ ex:s1" )
 transformSHACL( "ex:s22 ≡ <5 ∧ >6 → ex:p5 ex:p4⁻¹ ex:p2 ∝ ( ex:s1 ∧ ex:s2 )" )
 transformSHACL( "ex:s23 ≡ <5 ∧ >6 → ex:p5 ex:p4⁻¹ ex:p2 ∝ <7 ∧ ex:s2" )
 transformSHACL( "ex:s24 ≡ <5 ∧ >6 → ex:p5 ex:p4⁻¹ ex:p2 ∝ ( <7 ∧ ex:s2 ) " )
@@ -276,8 +278,9 @@ transformSHACL( "ex:s26 ≡  ex:x1 ⊩ ex:p2 ex:p3 ∝ ∈ { ex:p5 ex:s2 57 }" )
 transformSHACL( "ex:s27 ≡  ex:x1 ⊩ ex:p2 ∝ ∋ ex:p5 " )
 transformSHACL( "ex:s28 ≡  52 ⊩ ex:p2 ∝ ∋ 42 " )
 transformSHACL( "ex:s29 ≡  ex:x1 ⊩ ➀ " )
-transformSHACL( "ex:s30 ≡  ex:x1 ⊩ [ ex:s1 ] " )
-transformSHACL( "ex:s31 ≡  ex:x1 ⊩ [ ex:p2 ∝ ∋ 42 ] " )
+transformSHACL( "ex:s30a ≡  ex:x1 ⊩ ex:s1 " )
+transformSHACL( "ex:s30 ≡  ex:x1 ⊩ ⦇ ex:s1 ⦈ " )
+transformSHACL( "ex:s31 ≡  ex:x1 ⊩ ⦇ ex:p2 ∝ ∋ 42 ⦈ " )
 transformSHACL( "ex:s32 ≡  ex:x1 ⊩ ⟦ ex:p2 ⟧ " )
 transformSHACL( "ex:s33 ≡  ex:x1 ⊩ ⟦ ex:p1 ex:p2⁻¹ ex:p3  ⟧ " )
 transformSHACL( "ex:s34 ≡  ∈ ex:class ∪ ex:class2 ∪ ex:class3" )
@@ -317,16 +320,16 @@ transformSHACL( "∈ ex:Person6 ⊩" +
 transformSHACL( "∈ ex:Person9 ⊩ |≤3|" )
 transformSHACL( "∈ ex:Person8 ⊩ ( |≤3| )" )
 transformSHACL( "∈ ex:Person7 ⊩" + 
-	  "( ex:spouse ∝ |≤0| →	ex:mstatus ∝ ( |≥1| ∧ ∈{ex:single ex:divorced} ) ) ∖" +
-	  "( ex:spouse ∝ |≤1| →	ex:mstatus ∝ ( |≥1| ∧ ∈{ex:married} ) ) ∖" +
-	  "( |≤3| ) ∖" )
+	  "( ( ex:spouse ∝ |≤0| →	ex:mstatus ∝ ( |≥1| ∧ ∈{ex:single ex:divorced} ) ) ∖" +
+	  "  ( ex:spouse ∝ |≤1| →	ex:mstatus ∝ ( |≥1| ∧ ∈{ex:married} ) ) ∖" +
+	  "  |≤3| ∖ )" )
 
 transformSHACL( "∈ ex:Isolated ⊩ ⟦ rdf:type ⟧" )
 transformSHACL( "∈ ex:nonIsolated ⊩ ¬ ⟦ rdf:type ⟧" )
 transformSHACL( "@prefix sh : <http://www.w3.org/ns/shacl#>" )
 transformSHACL( "sh:partShape ≡ (IRI ∨ sh:inverse ∝ IRI)" )
 transformSHACL( "sh:pathShape1 ≡ ∈ sh:path ⊩ sh:partShape" )
-transformSHACL( "sh:pathShape2 ≡ ∈ sh:path ⊩ [ sh:partShape ]" )
-transformSHACL( "sh:pathShape ≡ ∈ sh:path ⊩ ( ( sh:partShape ) ∨ [ sh:partShape ] )" )
+transformSHACL( "sh:pathShape2 ≡ ∈ sh:path ⊩ ⦇ sh:partShape ⦈" )
+transformSHACL( "sh:pathShape ≡ ∈ sh:path ⊩ ( ( sh:partShape ) ∨ ⦇ sh:partShape ⦈ )" )
 
 print ( bytes.decode(shapesGraph.serialize(format='turtle')) )

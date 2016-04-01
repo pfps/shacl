@@ -31,9 +31,6 @@ string             = pp.Group(pp.QuotedString('"','\\'))
 nonnegativeInteger = pp.Word(pp.nums)
 regex              = string
 
-# just simple versions for now
-
-
 property           = name
 clss               = name
 datatype           = name
@@ -42,7 +39,11 @@ value              = name ^ literal
 pathpart  = property ^ pp.Group( property + pp.Literal('⁻¹').setResultsName('inverse') )
 path      = pp.Group( pp.OneOrMore( pathpart ) )
 
-atomic =  pp.Or( [
+component = pp.Forward()
+subshape  = pp.Forward()
+shape     = pp.Forward()
+
+component <<  pp.Or( [ name ,
              ( pp.Literal('∈')('token') + clss.setResultsName('class',True) +
                pp.ZeroOrMore( '∪' + clss.setResultsName('class',True) ) ) , 
 	     ( pp.Literal('^^')('token') +
@@ -71,37 +72,27 @@ atomic =  pp.Or( [
  	     ( pp.Literal('|')('token') + '≥' + nonnegativeInteger + '|' ) ,
  	     ( pp.Literal('|')('token') + '≤' + nonnegativeInteger + '|' ) ,
  	     ( pp.Literal('|')('token') + '=' + nonnegativeInteger + '|' ) ,
- 	     ( pp.Literal('➀')('token') ) ,
- 	     name ] )
+	     ( pp.Literal('➀')('token') ),
+             ( pp.Literal('¬')('token') + pp.Group(component)('component') ) ,
+             ( path.setResultsName('path') + pp.Literal('∝')('token') +
+                        pp.Group(component)('component') ) ,
+             ( pp.Literal('⦇')('token') + pp.Group(shape)('component') + '⦈' ) ,
+             ( pp.Literal('(').suppress() + subshape + pp.Literal(')').suppress() ) ] )
 
-disjunction = pp.Forward()
-
-primary = pp.Forward()
-
-primary <<   ( pp.Or ( [ atomic ,
-                      ( pp.Literal('¬')('token') + pp.Group(primary)('component') ) ,
- 	              ( path.setResultsName('path') + pp.Literal('∝')('token') +
-                        pp.Group(primary)('component') ) ,
- 	              ( pp.Literal('⦇')('token') + pp.Group(primary)('component') + '⦈' ) ,
-                      ( pp.Literal('(').suppress() + disjunction +
-                        pp.Literal(')').suppress() ) ] ) )
-
-def partitionPP(toks) :
-    if len(toks) == 1 : return toks[0]
-    else : return None
-
-partition = ( pp.Group(primary).setResultsName('component',True) +
-              pp.Optional ( pp.Literal('∖')('token') +
-                  pp.ZeroOrMore(pp.Group(primary).setResultsName('component',True)+'∖') )
-            ).setParseAction(partitionPP)
+subshape << pp.Or( [ shape ,
+             ( pp.Group(component).setResultsName('component',True) +
+               pp.OneOrMore( pp.Literal('∨')('token') +
+                             pp.Group(component).setResultsName('component',True) ) ) ,
+             ( pp.OneOrMore ( pp.Group(component).setResultsName('component',True) +
+                              pp.Literal('∖')('token') ) ) ] )
 
 def conjunctionPP(toks) :
     if len(toks) == 1 : return toks[0]
     else : return None
 
-conjunction = ( pp.Group(partition).setResultsName('component',True) +
+conjunction = ( pp.Group(component).setResultsName('component',True) +
                 pp.ZeroOrMore( pp.Literal('∧')('token') +
-                   pp.Group(partition).setResultsName('component',True))
+                   pp.Group(component).setResultsName('component',True))
               ).setParseAction(conjunctionPP)
 
 def shapePP(toks) :
@@ -114,7 +105,7 @@ def shapePP(toks) :
         toks["token"] = '→'
         return toks
 
-shape = ( pp.Group(conjunction) +
+shape << ( pp.Group(conjunction) +
           pp.Optional ( pp.Literal('→')('token') +
                         pp.Group(conjunction) ) ).setParseAction(shapePP)
 
@@ -122,14 +113,6 @@ def reduce(shape) :
     if shape.get('filter') is None : return shape.get('body')
     else : return shape
 
-def disjunctionPP(toks) :
-    if len(toks) == 1 : return toks[0]
-    else : return None
-
-disjunction << ( pp.Group(shape.addParseAction(reduce)).setResultsName('component',True) +
-                 pp.ZeroOrMore( pp.Literal('∨')('token') +
-                  pp.Group(shape.addParseAction(reduce)).setResultsName('component',True) )
-	       ).setParseAction(disjunctionPP)
 
 scope     = pp.Group ( value ^ \
 	               pp.Literal('∈').setResultsName('token') + clss ^ \
@@ -147,28 +130,3 @@ definition = name('name') + '≡' + ( pp.Group(shape)('shape') ^ scoping )
 prefix = pp.Keyword('@prefix')('token') + prefixName + ':' + IRI
 
 shacl = pp.ZeroOrMore ( pp.Group( prefix ^ definition ^ scoping ) )
-
-def parse(tag,production,string) :
-    print( tag, string)
-    dfns = production.parseString(string,True)
-    print(tag,dfns.dump())
-    print ("")
-
-def parseSHACL(tag,string) :
-    print( tag, string)
-    dfns = shacl.parseString(string,True)
-    for dfn in dfns :
-        print(tag, "DFN START", dfn)
-        print(tag, "DFN", "name", dfn.name)
-        print(tag, "DFN", "components", dfn.components)
-        print(tag, "DFN", "scope", dfn.scope)
-        print(tag, "DFN", "token", dfn.shape.token)
-        print(tag, "DFN", "filtr", dfn.shape.get('filter'))
-        print(tag, "DFN", "body ", dfn.shape.get('body'))
-        if dfn.shape.get('filter') is not None :
-            print (tag + " DFN filtr dump", dfn.shape.filter.dump() )
-        if dfn.shape.get('body') is not None :
-            print (tag + " DFN body  dump", dfn.shape.body.dump() )
-    print ("")
-
-
