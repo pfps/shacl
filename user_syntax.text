@@ -14,7 +14,7 @@ ex:child² ⊩ ∈ ex:Person 		# child objects are people
 ∈ ex:Patriot ⊩ ⋹ ex:Citizen		# patriots are directly citizens
 ex:password² ⊩ ^^xs:string ∧ ℓ≤24 ∧ ℓ≥8	# passwords are between 8 and 24 long
 ex:age² ⊩ ^^xs:integer ∧ ≥0		# ages are non-negative integers
-ex:john ⊩ ex:name ∝ "^John.*" ★ 	# John's name starts with "John"
+ex:john ⊩ ex:name ∝ "^John.*" ★ 	# John's name starts with John
 ex:mstatus² ⊩ ∈ { ex:single ex:married ex:divorced }
 					# three marital statuses only
 ex:Person ⊩ ex:mstatus ∝ |=1|		# people have one marital status
@@ -97,7 +97,6 @@ component ::= name				# validate against named shape
 		# to validate against the filter of the respective component.
 		# The final remnant is empty.
 		# Each remnant validates against the respective component.
-⦅
 
 path	  ::= pathpart +			# composition
 pathpart  ::= property
