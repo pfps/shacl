@@ -43,7 +43,7 @@ sh:pathShape ≡ ∈ sh:path ⊩ ( sh:partShape ∨ ⦇ sh:partShape ⦈ )
 
 	Grammar					Meaning
 
-shaclDoc  ::= ( prefixID | statement ) *
+shaclDoc  ::= ( prefixID | statement ) ( '.' ( prefixID | statement ) )* '.'?
 
 prefixID  ::= '@prefix' prefixName ':' IRI
 

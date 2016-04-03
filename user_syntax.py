@@ -9,9 +9,10 @@ nums     = pp.Word(pp.nums)
 integer  = pp.Combine(pp.Optional(pp.Literal('-')^pp.Literal('+')) + nums)
 exponent = pp.Combine((pp.Literal('e')^pp.Literal('E')) + integer)('exponent')
 point    = pp.Literal('.')('point')
-number   = ( integer('integer') + pp.Optional(point + pp.Optional(nums)('fraction')) + \
-                 pp.Optional(exponent) ) ^ \
-	     ( point + nums('fraction') + pp.Optional(exponent) )
+number   = pp.Combine( ( integer('integer') +
+                         pp.Optional(point + pp.Optional(nums)('fraction')) + \
+                         pp.Optional(exponent) ) ^ \
+                       ( point + nums('fraction') + pp.Optional(exponent) ) )
 
 prefixName         = pp.Word(pp.alphas,pp.alphanums)
 name               = pp.Word(pp.alphas,pp.alphanums)
@@ -129,4 +130,6 @@ definition = name('name') + '≡' + ( pp.Group(shape)('shape') ^ scoping )
 
 prefix = pp.Keyword('@prefix')('token') + prefixName + ':' + IRI
 
-shacl = pp.ZeroOrMore ( pp.Group( prefix ^ definition ^ scoping ) )
+shacl = pp.Group( prefix ^ definition ^ scoping ) + \
+	pp.ZeroOrMore( pp.Literal('.').suppress() + pp.Group( prefix ^ definition ^ scoping ) ) + \
+        pp.Optional(pp.Literal('.').suppress())

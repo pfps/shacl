@@ -1,4 +1,4 @@
-# python3
+#!/usr/bin/python3
 # Transform user syntax to an RDF graph
 
 import pyparsing as pp
@@ -13,10 +13,10 @@ from rdflib.namespace import RDF
 from rdflib.namespace import RDFS
 from rdflib.namespace import XSD
 
-shapesGraph = rdflib.Graph()
-nsm = shapesGraph.namespace_manager
 SH = Namespace("http://www.w3.org/ns/shacl#")
-nsm.bind('sh',SH)
+
+shapesGraph = None
+nsm = None
 
 def toLiteral(lit) : 
     if lit.get('lexical') is not None:
@@ -232,8 +232,7 @@ def transformShape(shape,node = None) :
         transformComponent(shape,node)
     return node
 
-def transformSHACL(string) :
-    dfns =  shacl.parseString(string,True)
+def transform(dfns) :
     for dfn in dfns :
 #        print ("DEFINITION",dfn)
         if dfn.token == '@prefix' :
@@ -244,92 +243,17 @@ def transformSHACL(string) :
             if dfn.get('scope') is not None : transformScope(dfn.get('scope'),n)
             transformShape(dfn.get('shape'),n)
 
-transformSHACL( "@prefix ex : <http://ex.com/> ")
-transformSHACL( "ex:bar ≡ ∈ ex:class")
-transformSHACL( "ex:s01 ≡ ℓ ≤ 57 → ∈ ex:class")
-transformSHACL( "ex:s02 ≡ ¹ex:property ∪ ex:prop² ⊩ ℓ ≤ 5 → ∈ ex:class" )
-transformSHACL( "ex:s03 ≡ ¹? ∪ ?² ⊩ ℓ ≤ 6 ∧ ∈ ex:classx" )
-transformSHACL( "ex:s04 ≡ ∈ ex:scopeclass ⊩ " +
-		"( (ℓ ≤ 5 → ∈ ex:class) ∖ ∈ ex:classf ∖ ) → ℓ ≤ 6 ∧ ∈ ex:classx" )
-transformSHACL( "ex:s05 ≡ ¹ex:property ∪ ¹ex:prop ⊩ ∈ ex:classf → ℓ ≤ 6 ∧ ex:s1" )
-transformSHACL( "ex:s06 ≡ ¹ex:property ∪ ¹ex:prop ⊩ ex:s1 → <00079 " )
-transformSHACL( "ex:s07 ≡ ¹ex:property ∪ ¹ex:prop ⊩ ex:s1 → >77.700 " )
-transformSHACL( "ex:s08 ≡ ¹ex:property ∪ ¹ex:prop ⊩ >+5 → >7e2 " )
-transformSHACL( "ex:s09 ≡ ¹ex:property ∪ ¹ex:prop ⊩ >-5 → <.7 " )
-transformSHACL( "ex:s10 ≡ ¹ex:property ∪ ¹ex:prop ⊩ <5 → <7.e2 " )
-transformSHACL( 'ex:s11 ≡ ¹ex:property ∪ ¹ex:prop ⊩ <"HI" → >-7 ' )
-transformSHACL( 'ex:s12 ≡ ¹ex:property ∪ ¹ex:prop ⊩ <"BYE"@en ∧ >6 → <7 ∧ >8' )
-transformSHACL( 'ex:s13 ≡ ¹ex:property ∪ ¹ex:prop ⊩ <"dtyp"^^xsd:string ∧ >6 → ( <7 ∨ >8 )' )
-transformSHACL( "ex:s14 ≡ ¹ex:property ∪ ¹ex:prop ⊩ <true∧>false → ¬(<7∨>9)∧((>5→≤4)∖≥2∖)" )
-transformSHACL( "ex:s15 ≡ <5 ∧ >6 → ex:p1 = ex:p2" )
-transformSHACL( "ex:s16 ≡ <5 ∧ >6 → ex:p1 ex:p3 = ex:p4⁻¹ ex:p2" )
-transformSHACL( "ex:s17 ≡ <5 ∧ >6 → ex:p1 ex:p3 = ex:p5 ex:p4⁻¹ ex:p2" )
-transformSHACL( "ex:s18 ≡ <5 ∧ >6 → ex:p1 ex:p3 ∅ ex:p5 ex:p4⁻¹ ex:p2" )
-transformSHACL( "ex:s19 ≡ <5 ∧ >6 → ex:p1 ex:p3 < ex:p5 ex:p4⁻¹ ex:p2" )
-transformSHACL( "ex:s20 ≡ <5 ∧ >6 → ex:p1 ex:p3 ≤ ex:p5 ex:p4⁻¹ ex:p2" )
-transformSHACL( "ex:s21 ≡ ex:p2 ∝ ex:s1" )
-transformSHACL( "ex:s21a ≡ <5 ∧ >6 → ex:p2 ∝ ex:s1" )
-transformSHACL( "ex:s21b ≡ <5 ∧ >6 → ex:p5 ex:p4⁻¹ ex:p2 ∝ ex:s1" )
-transformSHACL( "ex:s22 ≡ <5 ∧ >6 → ex:p5 ex:p4⁻¹ ex:p2 ∝ ( ex:s1 ∧ ex:s2 )" )
-transformSHACL( "ex:s23 ≡ <5 ∧ >6 → ex:p5 ex:p4⁻¹ ex:p2 ∝ <7 ∧ ex:s2" )
-transformSHACL( "ex:s24 ≡ <5 ∧ >6 → ex:p5 ex:p4⁻¹ ex:p2 ∝ ( <7 ∧ ex:s2 ) " )
-transformSHACL( "ex:s25 ≡ <5 ∧ >6 → ( ex:p5 ex:p4⁻¹ ex:p2 ∝ <7 ∧ ex:s2 )" )
-transformSHACL( "ex:s26 ≡  ex:x1 ⊩ ex:p2 ex:p3 ∝ ∈ { ex:p5 ex:s2 57 }" )
-transformSHACL( "ex:s27 ≡  ex:x1 ⊩ ex:p2 ∝ ∋ ex:p5 " )
-transformSHACL( "ex:s28 ≡  52 ⊩ ex:p2 ∝ ∋ 42 " )
-transformSHACL( "ex:s29 ≡  ex:x1 ⊩ ➀ " )
-transformSHACL( "ex:s30a ≡  ex:x1 ⊩ ex:s1 " )
-transformSHACL( "ex:s30 ≡  ex:x1 ⊩ ⦇ ex:s1 ⦈ " )
-transformSHACL( "ex:s31 ≡  ex:x1 ⊩ ⦇ ex:p2 ∝ ∋ 42 ⦈ " )
-transformSHACL( "ex:s32 ≡  ex:x1 ⊩ ⟦ ex:p2 ⟧ " )
-transformSHACL( "ex:s33 ≡  ex:x1 ⊩ ⟦ ex:p1 ex:p2⁻¹ ex:p3  ⟧ " )
-transformSHACL( "ex:s34 ≡  ∈ ex:class ∪ ex:class2 ∪ ex:class3" )
-transformSHACL( "ex:s35 ≡  ^^ xsd:integer ∪ xsd:string ∪ xsd:double" )
-transformSHACL( "ex:s36 ≡  ^^ xsd:integer" )
-transformSHACL( "ex:s37 ≡  |≥8| → |=10|" )
+def transformFile() :
+    global shapesGraph
+    shapesGraph = rdflib.Graph()
+    global nsm
+    nsm = shapesGraph.namespace_manager
+    nsm.bind('sh',SH)
+    print( "TRANSFORMING",sys.argv[1])
+    dfns =  shacl.parseFile(sys.argv[1],True)
+    transform(dfns)
+    print ( bytes.decode(shapesGraph.serialize(format='turtle')) )
 
-transformSHACL( "∈ ex:Person  ⊩ |≤27|" )
-transformSHACL( "¹ex:child    ⊩ ∋ ex:john" )
-transformSHACL( "¹ex:child    ⊩ ∈ ex:Person ∧ IRI" )
-transformSHACL( "ex:child²    ⊩ ∈ ex:Person" )
-transformSHACL( "∈ ex:Patriot ⊩ ⋹ ex:Citizen" )
-transformSHACL( "ex:password² ⊩ ∈ xs:string ∧ ℓ≤24 ∧ ℓ≥8" ) 
-transformSHACL( "ex:age²      ⊩ ∈ xs:integer ∧ ≥0" )
-transformSHACL( 'ex:john      ⊩ ex:name ∝ "^John.*" ★' ) #*****
-transformSHACL( "ex:mstatus²  ⊩ ∈ { ex:single ex:married ex:divorced }" )
-transformSHACL( "ex:Person    ⊩ ex:mstatus ∝ |=1|" )
-transformSHACL( "ex:Person    ⊩ ex:mstatus ∝ ∋ ex:married → ex:spouse ∝ |≥1| " )
-transformSHACL( "ex:Person    ⊩ ex:mstatus ∝ ∋ ex:single → ex:spouse ∝ |≤0| " )
+import sys
+if __name__ == "__main__" : transformFile()
 
-transformSHACL( "∈ ex:Person1  ⊩ ex:spouse ∅ ex:child ")
-transformSHACL( "∈ ex:Person2  ⊩ ex:child ex:age ≤ ex:age " )
-transformSHACL( "∈ ex:Person3  ⊩ ex:spouse ∅ ex:child ∧ " 
-				"ex:child ex:age ≤ ex:age " )
-transformSHACL( "∈ ex:Person4  ⊩ ex:spouse ∅ ex:child ∧ " 
-				"ex:child ex:age ≤ ex:age ∧ " 
-				"ex:age ≤ ex:child⁻¹ ex:age ∧ " 
-				"ex:child⁻¹ ex:child ∝ |≤9| ")
-transformSHACL( "∈ ex:Person5  ⊩ ex:spouse ∅ ex:child ∧ " 
-				"ex:child ex:age ≤ ex:age ∧ " 
-				"ex:age ≤ ex:child⁻¹ ex:age ∧ " 
-				"ex:child⁻¹ ex:child ∝ |≤9| ∧ " 
-			        "ex:name ∝ ∈ rdf:langString ∧" 
-				"ex:name ∝ ➀" )
-transformSHACL( "∈ ex:Person6 ⊩" + 
-	  "( ex:spouse ∝ |≤0| →	ex:mstatus ∝ ( |≥1| ∧ ∈{ex:single ex:divorced} ) )" )
-transformSHACL( "∈ ex:Person9 ⊩ |≤3|" )
-transformSHACL( "∈ ex:Person8 ⊩ ( |≤3| )" )
-transformSHACL( "∈ ex:Person7 ⊩" + 
-	  "( ( ex:spouse ∝ |≤0| →	ex:mstatus ∝ ( |≥1| ∧ ∈{ex:single ex:divorced} ) ) ∖" +
-	  "  ( ex:spouse ∝ |≤1| →	ex:mstatus ∝ ( |≥1| ∧ ∈{ex:married} ) ) ∖" +
-	  "  |≤3| ∖ )" )
-
-transformSHACL( "∈ ex:Isolated ⊩ ⟦ rdf:type ⟧" )
-transformSHACL( "∈ ex:nonIsolated ⊩ ¬ ⟦ rdf:type ⟧" )
-transformSHACL( "@prefix sh : <http://www.w3.org/ns/shacl#>" )
-transformSHACL( "sh:partShape ≡ (IRI ∨ sh:inverse ∝ IRI)" )
-transformSHACL( "sh:pathShape1 ≡ ∈ sh:path ⊩ sh:partShape" )
-transformSHACL( "sh:pathShape2 ≡ ∈ sh:path ⊩ ⦇ sh:partShape ⦈" )
-transformSHACL( "sh:pathShape ≡ ∈ sh:path ⊩ ( ( sh:partShape ) ∨ ⦇ sh:partShape ⦈ )" )
-
-print ( bytes.decode(shapesGraph.serialize(format='turtle')) )
