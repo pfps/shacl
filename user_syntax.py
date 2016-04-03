@@ -14,19 +14,21 @@ number   = pp.Combine( ( integer('integer') +
                          pp.Optional(exponent) ) ^ \
                        ( point + nums('fraction') + pp.Optional(exponent) ) )
 
-prefixName         = pp.Word(pp.alphas,pp.alphanums)
-name               = pp.Word(pp.alphas,pp.alphanums)
-IRI                = pp.QuotedString('<',escChar='\\',endQuoteChar='>')('IRI')
-qname              = pp.Group(prefixName + pp.Literal(':')('qname') + name)
-name               = qname # | IRI # conflicts with <n
+prefixName = pp.Word(pp.alphas,pp.alphanums)
+localName  = pp.Word(pp.alphas,pp.alphanums)
+IRI        = pp.Combine(pp.Literal('<').suppress() +
+                        pp.Word(pp.srange("[\x21-\xFFFF]"),excludeChars='<>"{}|^`') +
+                        pp.Literal('>').suppress())
+qname      = pp.Group(prefixName + pp.Literal(':')('qname') + localName)
+name       = qname | IRI
 
-language           = pp.Word(pp.alphas,pp.alphanums+'-')
-quotedString       = pp.QuotedString('"',escChar='\\',endQuoteChar='"')
+language   = pp.Word(pp.alphas,pp.alphanums+'-')
+lexical    = pp.QuotedString('"',escChar='\\',endQuoteChar='"')
 
-literal = pp.Group ( quotedString('lexical') +
-                     ( pp.Optional ( '@' + language('language') ) ^
-                       pp.Optional ( '^^' + name('datatype') ) ) ^
-                     number ^ boolean )
+literal    = pp.Group ( lexical('lexical') +
+                        ( pp.Optional ( '@' + language('language') ) ^
+                          pp.Optional ( '^^' + name('datatype') ) ) ^
+                        number ^ boolean )
 
 string             = pp.Group(pp.QuotedString('"','\\'))
 nonnegativeInteger = pp.Word(pp.nums)

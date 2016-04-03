@@ -109,10 +109,10 @@ value	  ::= name | literal			# object
 
 regex	  ::= string				# regular expression
 
-name      ::= qname			# NOTE: no <IRI> here, just qnames
+name      ::= qname | IRI
 qname	  ::= prefixName ':' name
-IRI	  ::= '<' ucharacter '>'
 
+IRI			as per Turtle
 prefixName		as per Turtle
 name			as per Turtle
 literal   		as per Turtle
