@@ -43,15 +43,12 @@ sh:pathShape ≡ ∈ sh:path ⊩ ( sh:partShape ∨ ⦇ sh:partShape ⦈ )
 
 	Grammar					Meaning
 
-shaclDoc  ::= ( prefixID | definition ) *
+shaclDoc  ::= ( prefixID | statement ) *
 
 prefixID  ::= '@prefix' prefixName ':' IRI
 
-definition::= name '≡' shape			# refer to shape by name
-	    | name '≡' scopedShape		# refer to shape by name
-
-scopedShape ::= scope ( '∪' scope )* '⊩' shape
-		# set of all nodes in any scope validates against shape
+statement ::= name '≡' ( scope ( '∪' scope )* '⊩' )? shape	# name shape
+	    | scope ( '∪' scope )* '⊩' shape	# nodes in scope validate
 
 scope	  ::= value				# the value
 	    | '∈' class				# SHACL instances of class
