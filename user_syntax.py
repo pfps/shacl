@@ -134,4 +134,4 @@ prefix = pp.Keyword('@prefix')('token') + prefixName + ':' + IRI
 
 shacl = pp.Group( prefix ^ definition ^ scoping ) + \
 	pp.ZeroOrMore( pp.Literal('.').suppress() + pp.Group( prefix ^ definition ^ scoping ) ) + \
-        pp.Optional(pp.Literal('.').suppress())
+        (pp.Literal('.').suppress())
