@@ -2,7 +2,7 @@
 	
 	
 This is a user-friendly syntax for the core of SHACL that tries to align
-directly with my SHACL RDF syntax.
+directly with my SHACL RDF syntax.   The grammar is compatible with ANTLR.
 
 It would be possible to modify the syntax to come up with a more standard
 treatment of conjunction, disjunction, and negation but that syntax would
@@ -46,56 +46,55 @@ sh:pathShape ≡ ∈ sh:path ⊩ ( sh:partShape ∨ ⦇ sh:partShape ⦈ )
 	
 	
 	Grammar					Meaning
+	
+shaclDoc  : statement* EOF ;
 
-shaclDoc  : ( prefixID | statement ) ( '.' ( prefixID | statement ) )* '.'? ;
-
-prefixID  : '@prefix' PrefixName ':' IRI ;
-
-statement : name '≡' ( scope ( '∪' scope )* '⊩' )? shape	// name shape
-	    | scope ( '∪' scope )* '⊩' shape ;	// nodes in scope validate
+statement : '@prefix' PNAME_NS IRIREF '.'
+          | iri '≡' ( scope ( '∪' scope )* '⊩' )? shape '.'  // name shape
+	  | scope ( '∪' scope )* '⊩' shape '.' ;  // nodes in scope validate
 
 scope	  : value				// the value
-	    | '∈' clss				// SHACL instances of class
-	    | '¹' property			// subjects of property
-	    | property '²'			// objects of property
-	    | '¹' '?'				// all subjects
-	    | '?' '²' ;				// all objects
+	  | '∈' clss				// SHACL instances of class
+	  | '¹' property			// subjects of property
+	  | property '²'			// objects of property
+	  | '¹' '?'				// all subjects
+	  | '?' '²' ;				// all objects
 
 shape	  : ( filter ( '∧' filter )* '→' )? component ( '∧' component )* ;
-		// set of nodes that validate against all filters
-		// validates against each component
+			// set of nodes that validate against all filters
+			// validates against each component
 
 filter	  : component ;				// nodes that validate vs shape
 
-component : name				// validate against named shape
-	    | '∈' clss ( '∪' clss )*		// SHACL instance of some class
-	    | '^^' datatype ( '∪' datatype )*	// has one of datatypes
-	    | '∈' '{' value* '}'		// is one of values
-	    | '⋹' clss  			// has rdf:type of class
-	    | 'ℓ' '≤' Integer		 	// maximum string length
-	    | 'ℓ' '≥' Integer		 	// minimum string length
-	    | '>' literal			// exclusive minimum
-	    | '≥' literal			// inclusive minimum
-	    | '<' literal			// exclusive maximum
-	    | '≤' literal			// inclusive maximum
-	    | 'IRI' | 'Literal' | 'BlankNode'	// kind of node
-	    | regex '★' ( String )?		// matches pattern (with flags)
-	    | path '=' path			// path values the same
-	    | path '∅' path			// path values disjoint
-	    | path '<' path			// path1 values < path2 values
-	    | path '≤' path			// path1 values ≤ path2 values
-	    | '⟦' pathpart * '⟧'		// no other property has values
-	    | '∋' value				// set contains value
-	    | '|' '≥' Integer '|'		// minimum size of set
-	    | '|' '≤' Integer '|'		// maximum size of set
-	    | '|' '=' Integer '|'		// exact size of set
-	    | '➀'				// only one value per language
-	    | '¬' component			// doesn't validate ag. comp.
-	    | path '∝' component		// path values in shape
-	    | '⦇' shape '⦈'			// list members in shape
-	    | '(' shape ')'			// validate against shape
-	    | '(' component ('∨'component)+ ')'	// validate against one or more
-	    | '(' ( component '∖' ) + ')' ;	// partition - see below
+component : iri					// validate against named shape
+	  | '∈' clss ( '∪' clss )*		// SHACL instance of some class
+	  | '^^' datatype ( '∪' datatype )*	// has one of datatypes
+	  | '∈' '{' value* '}'			// is one of values
+	  | '⋹' clss  				// has rdf:type of class
+	  | 'ℓ' '≤' UNSIGNED_INTEGER		// maximum string length
+	  | 'ℓ' '≥' UNSIGNED_INTEGER		// minimum string length
+	  | '>' literal				// exclusive minimum
+	  | '≥' literal				// inclusive minimum
+	  | '<' literal				// exclusive maximum
+	  | '≤' literal				// inclusive maximum
+	  | 'IRI' | 'Literal' | 'BlankNode'	// kind of node
+	  | regex '★' ( string )?		// matches pattern (with flags)
+	  | path '=' path			// path values the same
+	  | path '∅' path			// path values disjoint
+	  | path '<' path			// path1 values < path2 values
+	  | path '≤' path			// path1 values ≤ path2 values
+	  | '⟦' pathpart * '⟧'			// no other property has values
+	  | '∋' value				// set contains value
+	  | '|' '≥' UNSIGNED_INTEGER '|'	// minimum size of set
+	  | '|' '≤' UNSIGNED_INTEGER '|'	// maximum size of set
+	  | '|' '=' UNSIGNED_INTEGER '|'	// exact size of set
+	  | '➀'				// only one value per language
+	  | '¬' component			// doesn't validate ag. comp.
+	  | path '∝' component			// path values in shape
+	  | '⦇' shape '⦈'			// list members in shape
+	  | '(' shape ')'			// validate against shape
+	  | '(' component ('∨'component)+ ')'	// validate against one or more
+	  | '(' ( component '∖' ) + ')' ;	// partition - see below
 		// The initial remnant is the entire set being validated.
 		// The next remnant is the subset of the current one that fails
 		// to validate against the filter of the respective component.
@@ -104,19 +103,17 @@ component : name				// validate against named shape
 
 path	  : pathpart + ;			// composition
 pathpart  : property
-	    | property '⁻¹' ;			// inverse of property
+	  | property '⁻¹' ;			// inverse of property
 
-clss	  : name ;				// a class
-datatype  : name ;				// a datatype
-property  : name ;				// a property
-value	  : name | literal ;			// object
-name      : Qname | IRI ;
-
-regex	  : String ;				// regular expression
+clss	  : iri ;				// a class
+datatype  : iri ;				// a datatype
+property  : iri ;				// a property
+value	  : iri | literal ;			// object
+regex	  : string ;				// regular expression
+UNSIGNED_INTEGER : [0-9]+
 
 literal   		as per Turtle
-
-Qname			as per Turtle
-IRI			as per Turtle
-PrefixName		as per Turtle
-String			as per Turtle
+string   		as per Turtle
+iri			as per Turtle
+PNAME_NS		as per Turtle
+IRIREF			as per Turtle
