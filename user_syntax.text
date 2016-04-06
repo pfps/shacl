@@ -3,7 +3,7 @@
 	
 This is a user-friendly syntax for the core of SHACL that tries to align
 directly with my SHACL RDF syntax.   The grammar is compatible with ANTLR.
-
+	
 It would be possible to modify the syntax to come up with a more standard
 treatment of conjunction, disjunction, and negation but that syntax would
 not align as closely with the RDF syntax.
@@ -46,74 +46,117 @@ sh:pathShape ≡ ∈ sh:path ⊩ ( sh:partShape ∨ ⦇ sh:partShape ⦈ )
 	
 	
 	Grammar					Meaning
-	
+
 shaclDoc  : statement* EOF ;
 
-statement : '@prefix' PNAME_NS IRIREF '.'
-          | iri '≡' ( scope ( '∪' scope )* '⊩' )? shape '.'  // name shape
-	  | scope ( '∪' scope )* '⊩' shape '.' ;  // nodes in scope validate
+statement : prefix | define | scoping ;
+prefix    : '@prefix' PNAME_NS IRIREF '.' ;
+define    : iri '≡' ( scope ( '∪' scope )* '⊩' )? shape '.' ; // name shape
+scoping	  : scope ( '∪' scope )* '⊩' shape '.' ; // nodes in scope validate
 
-scope	  : value				// the value
-	  | '∈' clss				// SHACL instances of class
-	  | '¹' property			// subjects of property
-	  | property '²'			// objects of property
-	  | '¹' '?'				// all subjects
-	  | '?' '²' ;				// all objects
+scope	  : value		    #svalue	// the value
+	  | '∈' clss		    #sclass	// SHACL instances of class
+	  | '¹' proprty		    #spsubject	// subjects of property
+	  | proprty '²'		    #spobject	// objects of property
+	  | '¹' '?'		    #sasubject	// all subjects
+	  | '?' '²'		    #saobject 	// all objects
+	  ;
 
-shape	  : ( filter ( '∧' filter )* '→' )? component ( '∧' component )* ;
-			// set of nodes that validate against all filters
+shape	  : ( filtr ( '∧' filtr )* '→' )? component ( '∧' component )* ;
+			// set of nodes that validate against all filtrs
 			// validates against each component
 
-filter	  : component ;				// nodes that validate vs shape
+filtr	  : component ;				// nodes that validate vs shape
 
-component : iri					// validate against named shape
-	  | '∈' clss ( '∪' clss )*		// SHACL instance of some class
-	  | '^^' datatype ( '∪' datatype )*	// has one of datatypes
-	  | '∈' '{' value* '}'			// is one of values
-	  | '⋹' clss  				// has rdf:type of class
-	  | 'ℓ' '≤' UNSIGNED_INTEGER		// maximum string length
-	  | 'ℓ' '≥' UNSIGNED_INTEGER		// minimum string length
-	  | '>' literal				// exclusive minimum
-	  | '≥' literal				// inclusive minimum
-	  | '<' literal				// exclusive maximum
-	  | '≤' literal				// inclusive maximum
-	  | 'IRI' | 'Literal' | 'BlankNode'	// kind of node
-	  | regex '★' ( string )?		// matches pattern (with flags)
-	  | path '=' path			// path values the same
-	  | path '∅' path			// path values disjoint
-	  | path '<' path			// path1 values < path2 values
-	  | path '≤' path			// path1 values ≤ path2 values
-	  | '⟦' pathpart * '⟧'			// no other property has values
-	  | '∋' value				// set contains value
-	  | '|' '≥' UNSIGNED_INTEGER '|'	// minimum size of set
-	  | '|' '≤' UNSIGNED_INTEGER '|'	// maximum size of set
-	  | '|' '=' UNSIGNED_INTEGER '|'	// exact size of set
-	  | '➀'				// only one value per language
-	  | '¬' component			// doesn't validate ag. comp.
-	  | path '∝' component			// path values in shape
-	  | '⦇' shape '⦈'			// list members in shape
-	  | '(' shape ')'			// validate against shape
-	  | '(' component ('∨'component)+ ')'	// validate against one or more
-	  | '(' ( component '∖' ) + ')' ;	// partition - see below
-		// The initial remnant is the entire set being validated.
+component : iri			    #cname	// validate against named shape
+ | '∈' clss ( '∪' clss )*	    #cclass	// SHACL instance of some class
+ | '^^' datatype ( '∪' datatype )*  #cdatatype	// has one of datatypes
+ | '∈' '{' value* '}'		    #cin	// is one of values
+ | '⋹' clss  			    #cdirect	// has rdf:type of class
+ | 'ℓ' '≤' UNSIGNED_INTEGER	    #cmaxLength	// maximum string length
+ | 'ℓ' '≥' UNSIGNED_INTEGER	    #cminLength	// minimum string length
+ | '>' literal			    #cminExcl	// exclusive minimum
+ | '≥' literal			    #cminIncl	// inclusive minimum
+ | '<' literal			    #cmaxExcl	// exclusive maximum
+ | '≤' literal			    #cmaxIncl	// inclusive maximum
+ | 'IRI'			    #cnkIRI
+ | 'Literal'			    #cnkLit
+ | 'BlankNode'			    #cnkBlank	// kind of node
+ | regex '★' ( string )?	    #cpattern	// matches pattern (with flags)
+ | path '=' path		    #cequals	// path values the same
+ | path '∅' path		    #cnotEquals	// path values disjoint
+ | path '<' path		    #clt	// path1 values < path2 values
+ | path '≤' path		    #clte	// path1 values ≤ path2 values
+ | '⟦' pathpart * '⟧'		    #cclosed	// no other property has values
+ | '∋' value			    #chasValue	// set contains value
+ | '|' '≥' UNSIGNED_INTEGER '|'	    #cminCount	// minimum size of set
+ | '|' '≤' UNSIGNED_INTEGER '|'	    #cmaxCount	// maximum size of set
+ | '|' '=' UNSIGNED_INTEGER '|'	    #cexactCount// exact size of set
+ | '➀'			    	    #cuniqueLang// only one value per language
+ | '¬' component		    #cnot	// doesn't validate ag. comp.
+ | path '∝' component		    #cpathValues// path values in shape
+ | '⦇' shape '⦈'		    #clist	// list members in shape
+ | '(' shape ')'		    #cshape	// validate against shape
+ | '(' component ('∨'component)+ ')'#cor	// validate against one or more
+ | '(' ( component '∖' ) + ')' 	    #cpartition // partition - see below
+ ;		// The initial remnant is the entire set being validated.
 		// The next remnant is the subset of the current one that fails
 		// to validate against the filter of the respective component.
 		// The final remnant is empty.
 		// Each remnant validates against the respective component.
 
 path	  : pathpart + ;			// composition
-pathpart  : property
-	  | property '⁻¹' ;			// inverse of property
+pathpart  : proprty		    #pprop
+	  | proprty '⁻¹' 	    #pinv 	// inverse of property
+	  ;
 
 clss	  : iri ;				// a class
 datatype  : iri ;				// a datatype
-property  : iri ;				// a property
+proprty   : iri ;				// a property
 value	  : iri | literal ;			// object
 regex	  : string ;				// regular expression
-UNSIGNED_INTEGER : [0-9]+
 
-literal   		as per Turtle
-string   		as per Turtle
-iri			as per Turtle
-PNAME_NS		as per Turtle
-IRIREF			as per Turtle
+// Productions from Turtle grammar
+
+literal        : rdfLiteral | numericLiteral | booleanLiteral ;
+rdfLiteral     : string ( LANGTAG |  '^^' iri )? ;
+numericLiteral : integer | DECIMAL | DOUBLE ;
+booleanLiteral : 'true' | 'false' ;
+string         : STRING_LITERAL_QUOTE | STRING_LITERAL_SINGLE_QUOTE
+	       | STRING_LITERAL_LONG_SINGLE_QUOTE | STRING_LITERAL_LONG_QUOTE ;
+iri            : IRIREF | prefixedName ;
+prefixedName   : PNAME_LN | PNAME_NS ;
+integer	       : UNSIGNED_INTEGER | SIGNED_INTEGER ;
+
+IRIREF            : '<' (~[\u0000-\u0020<>"{}|^`\\] | UCHAR)* '>' ;
+PNAME_NS          : PN_PREFIX? ':' ;
+PNAME_LN          : PNAME_NS PN_LOCAL ;
+LANGTAG           : '@' [a-zA-Z]+ ('-' [a-zA-Z0-9]+)* ;
+//INTEGER         : ('+'|'-')? [0-9]+ ; // split in two
+SIGNED_INTEGER    : ('+'|'-') [0-9]+ ;
+UNSIGNED_INTEGER  : [0-9]+ ;
+DECIMAL           : ('+'|'-')? [0-9]* '.' [0-9]+ ;
+DOUBLE            : ('+'|'-')? ( [0-9]+'.'[0-9]* EXPONENT | '.'[0-9]+ EXPONENT | 
+ 		    	       	 [0-9]+  EXPONENT ) ;
+fragment EXPONENT : [eE] ('+'|'-')? [0-9]+ ;
+
+STRING_LITERAL_QUOTE        : '"'  (~[\u0022\u005C\u000A\u000D] | ECHAR | UCHAR)* '"'  ;
+STRING_LITERAL_SINGLE_QUOTE : '\'' (~[\u0027\u005C\u000A\u000D] | ECHAR | UCHAR)* '\'' ;
+STRING_LITERAL_LONG_SINGLE_QUOTE:'\'\'\'' (('\''|'\'\'')?(~['\\]|ECHAR|UCHAR))* '\'\'\'' ;
+STRING_LITERAL_LONG_QUOTE 	: '"""' (('"' | '""')? (~["\\] | ECHAR | UCHAR))* '"""' ;
+fragment UCHAR         : '\\u' HEX HEX HEX HEX | '\\U' HEX HEX HEX HEX HEX HEX HEX HEX ;
+fragment ECHAR         : '\\' [tbnrf"'\\] ;
+fragment PN_CHARS_BASE : [A-Za-z\u00C0-\u00D6\u00D8-\u00F6] |
+                         [\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF] |
+			 [\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF] |
+			 [\uF900-\uFDCF\uFDF0-\uFFFD-\uEFFF\U00010000-\u000EFFFF] ;
+fragment PN_CHARS_U    : PN_CHARS_BASE | '_' ;
+fragment PN_CHARS      : PN_CHARS_U | '-' | [0-9\u00B7\u0300-\u036F\u203F-\u2040] ;
+fragment PN_PREFIX     : PN_CHARS_BASE ((PN_CHARS | '.')* PN_CHARS)? ;
+fragment PN_LOCAL      : (PN_CHARS_U | [:0-9] | PLX) ((PN_CHARS | '.' | ':' | PLX)* (PN_CHARS | ':' | PLX))? ;
+fragment PLX	       : PERCENT | PN_LOCAL_ESC ;
+fragment PERCENT       : '%' HEX HEX ;
+fragment HEX           : [0-9A-Fa-f] ;
+fragment PN_LOCAL_ESC  : '\\' [_~.-!$&'()*+,;=/?#@%] ;
+
+WS 	 	       : [ \t\r\n]+ -> skip ;
