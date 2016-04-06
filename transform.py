@@ -173,11 +173,10 @@ def transformComponent(component,node=None) :
         shapesGraph.add( (node,SH.nodeKind,SH.BlankNode) )
     elif component.token == "★" :
         if len(component) == 2 :
-            shapesGraph.add( (node,SH.regex, Literal(component[0][0])) )
+            shapesGraph.add( (node,SH.pattern, Literal(component[0][0])) )
         elif len(component) == 3 :
-            shapesGraph.add( (node,SH.regex,
-                              makeList([Literal(component[0][0]),
-                                        Literal(component[2][0])])) )
+            makeList(node,SH.pattern,[Literal(component[0][0]),
+                                      Literal(component[2][0])])
         else: print ( "ILLEGAL SYNTAX in ★", component.dump() )
     elif component.token == "=" :
         transformPathComponent(node,SH.equals,component[0],component[2])
