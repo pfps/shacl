@@ -248,24 +248,26 @@ constructs = { 'partition':partitionC}
 # process a shape for shape invocation
 def processShapeInvocation(g,shape,printShapes=False) :
     # process scopes
-    scopes = []
-    severity = g.value(shape,SH.severity,default=Violation)
-    for scopeValue in g.objects(shape,SH.scopeNode) :
-        scopes.append("VALUES ?this { %s }" % scopeValue.n3())
-    for scopeValue in g.objects(shape,SH.scopeClass) :
-        scopes.append("?this rdf:type/rdfs:subClassOf* %s ." % scopeValue.n3())
-    for scopeValue in g.objects(shape,SH.scopePropertyObject) :
-        scopes.append("SELECT DISTINCT ?this WHERE { ?that %s ?this . }" % scopeValue.n3())
-    for scopeValue in g.objects(shape,SH.scopePropertySubject) :
-        scopes.append("SELECT DISTINCT ?this WHERE { ?this %s ?that . }" % scopeValue.n3())
-    if (shape,SH.scopeAllObjects,true) in g :
-        scopes.append("SELECT DISTINCT ?this WHERE { ?that ?property ?this . }")
-    if (shape,SH.scopeAllSubjects,true) in g :
-        scopes.append("SELECT DISTINCT ?this WHERE { ?this ?property ?that . }")
-    for scopeValue in g.objects(shape,SH.scopeQuery) :
-        scopes.append("SELECT DISTINCT ( ?scope AS ?this ) WHERE { %s }" % scopeValue.n3())
-    if ( len(scopes) > 0 ) :
-        scope = "{ # SCOPE\n" + "\n} UNION # SCOPE\n { ".join(scopes) + " }\n"
+#    scopes = []
+#    severity = g.value(shape,SH.severity,default=Violation)
+#    for scopeValue in g.objects(shape,SH.scopeNode) :
+#        scopes.append("VALUES ?this { %s }" % scopeValue.n3())
+#    for scopeValue in g.objects(shape,SH.scopeClass) :
+#        scopes.append("?this rdf:type/rdfs:subClassOf* %s ." % scopeValue.n3())
+#    for scopeValue in g.objects(shape,SH.scopePropertyObject) :
+#        scopes.append("SELECT DISTINCT ?this WHERE { ?that %s ?this . }" % scopeValue.n3())
+#    for scopeValue in g.objects(shape,SH.scopePropertySubject) :
+#        scopes.append("SELECT DISTINCT ?this WHERE { ?this %s ?that . }" % scopeValue.n3())
+#    if (shape,SH.scopeAllObjects,true) in g :
+#        scopes.append("SELECT DISTINCT ?this WHERE { ?that ?property ?this . }")
+#    if (shape,SH.scopeAllSubjects,true) in g :
+#        scopes.append("SELECT DISTINCT ?this WHERE { ?this ?property ?that . }")
+#    for scopeValue in g.objects(shape,SH.scopeQuery) :
+#        scopes.append("SELECT DISTINCT ( ?scope AS ?this ) WHERE { %s }" % scopeValue.n3())
+    scope = processScopes(g,shape,printShapes)
+    if scope is not None :
+##    if ( len(scopes) > 0 ) :
+##        scope = "{ # SCOPE\n" + "\n} UNION # SCOPE\n { ".join(scopes) + " }\n"
         body = processShape(g,shape,{"severity":severity,"outer":"","projection":"","group":"","inner":scope})
         if body == "" and printShapes : print "No bodies for shape", shape
         return None if body == "" else \
@@ -273,6 +275,42 @@ def processShapeInvocation(g,shape,printShapes=False) :
     else :
         if printShapes : print "No scopes for shape", shape
         return None
+
+def processScopes(g,shape,printShapes=False) :
+    assert shape is not None
+    scopes = []
+    severity = g.value(shape,SH.severity,default=Violation)
+    assert metamodel is not None
+    for template in metamodel.subjects(RDF.type,SH.ScopeTemplate) :
+        for value in g.objects(shape,template) :
+            scopes.append( constructScopeTemplate(g,template,value) )
+    return constructScope(g,shape,scopes,context)
+
+def constructScopeTemplate(g,template,argument) :
+    context = dict(context)
+    context["argument"] = argument # add argument value to context
+    for argComponent in metamodel.objects(template,SH.propValues) : # look for arguments
+        argPath = pathtoSPARQL(metamodel,metamodel.value(argComponent,RDF.first))
+        argShape = metamodel.value(metamodel.value(argComponent,RDF.rest),RDF.first)
+        argName = metamodel.value(argShape,SH.argumentName)
+        argDefault = metamodel.value(argShape,SH.argumentDefault,
+                                     default= Literal("",datatype=XSD.string))
+        if argName is not None :
+            argVQuery = "SELECT ?value WHERE { ?shape %s ?value }" % argPath
+            argVs = [row[0] for row in g.query(argVQuery,initBindings={'shape':argument})]
+            argV = argVs[0] if len(argVs) > 0 else argDefault
+            context[str(argName)]= argV
+    query = metamodel.value(template,SH.templateQuery)
+    if query is not None :
+        return substitut(query,g,context)
+    print "SCOPE HAS NO CODE",template
+    return ""
+
+def constructScope(g,shape,scopes,context) :
+    if ( len(scopes) > 0 ) :
+        scope = "{ SELECT ( ?scope as ?this ) { { # SCOPE\n" + \
+                "\n} UNION # SCOPE\n { ".join(scopes) + " } } }\n"
+    else : return None
 
 # process a shape in a context
 def processShape(g,shape,context) :

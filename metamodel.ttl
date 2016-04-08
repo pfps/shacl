@@ -198,11 +198,11 @@ sh:equals a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:Li
 shmm:equalsShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:equals sh:equals ) .
 
-sh:notEquals a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+sh:disjoint a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
   sh:list shmm:pathShape ;
   sh:propValues ((rdf:rest rdf:rest) [ a sh:Shape ; sh:hasValue rdf:nil ] ) .
-shmm:notEqualsShape a sh:Shape ; sh:scopeClass sh:Shape ;
-  sh:propValues ( sh:notEquals sh:notEquals ) .
+shmm:disjointShape a sh:Shape ; sh:scopeClass sh:Shape ;
+  sh:propValues ( sh:disjoint sh:disjoint ) .
 
 sh:lessThan a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
   sh:propValues ((rdf:rest rdf:rest) [ a sh:Shape ; sh:hasValue rdf:nil ] ) ;
@@ -370,22 +370,22 @@ sh:maxLength a sh:ComponentTemplate ;
 sh:minInclusive a sh:ComponentTemplate ; 
   sh:templateMessage "Too small, must be at least [argument]"@en ;
   sh:message "Minimum must be a literal"@en ;
-  sh:templateFilter "( isLiteral(?this) && ?this >= [argument] )" .
+  sh:templateFilter "( COALESCE(?this >= [argument],false) )" .
 
 sh:minExclusive a sh:ComponentTemplate ; 
   sh:templateMessage "Too small, must be greater than [argument]"@en ;
   sh:message "Minimum must be a literal"@en ;
-  sh:templateFilter "( isLiteral(?this) && ?this > [argument] )" .
+  sh:templateFilter "( COALESCE(?this > [argument],false) )" .
 
 sh:maxInclusive a sh:ComponentTemplate ;
   sh:templateMessage "Too big, must be at most [argument]"@en ;
   sh:message "Minimum must be a literal"@en ;
-  sh:templateFilter "( isLiteral(?this) && ?this <= [argument] )" .
+  sh:templateFilter "( COALESCE(?this <= [argument],false) )" .
 
 sh:maxExclusive a sh:ComponentTemplate ;
   sh:templateMessage "Too big, must be less than [argument]"@en ;
   sh:message "Minimum must be a literal"@en ;
-  sh:templateFilter "( isLiteral(?this) && ?this < [argument] )" .
+  sh:templateFilter "( COALESCE(?this < [argument],false) )" .
 
 sh:nodeKind a sh:ComponentTemplate ; 
   sh:templateMessage "Not of correct kind [argument]"@en ;
@@ -414,7 +414,7 @@ sh:equals a sh:ComponentTemplate ;
   } UNION {
     { ?this [p(path2)] ?value } MINUS { ?this [p(path1)] ?value } } }""" .
 
-sh:notEquals a sh:ComponentTemplate ; 
+sh:disjoint a sh:ComponentTemplate ; 
   sh:propValues (rdf:first [ a sh:Shape ; sh:argumentName "path1" ] ) ; 
   sh:propValues ((rdf:rest rdf:first) [ a sh:Shape ; sh:argumentName "path2"]); 
   sh:templateMessage "Path values not disjoint"@en ;
@@ -548,3 +548,32 @@ sh:query a sh:ComponentTemplate ;
   sh:templateQuery """[argument]""" .
 
 # sh:partition not possible because partition tears shapes apart
+
+# scopes
+
+sh:ScopeTemplate a rdfs:Class; rdfs:subClassOf rdf:Property; rdfs:subClassOf sh:Shape.
+
+shmm:queryScopeTemplateUniques a sh:Shape ; sh:scopeClass sh:scopeTemplate ;
+  sh:propValues ( sh:templateQuery   [ a sh:Shape ; sh:maxCount 1 ] ) .
+
+sh:scopeClass a sh:ScopeTemplate ;
+  sh:templateQuery "SELECT DISTINCT ?scope WHERE { ?scope rdf:type/rdfs:subClassOf* [argument] }" .
+
+sh:scopeNode a sh:ScopeTemplate ;
+  sh:templateQuery "SELECT ( [argument] as ?scope ) WHERE { }"" .
+
+sh:scopePropertyObject a sh:ScopeTemplate ;
+  sh:templateQuery "SELECT DISTINCT ?scope WHERE { ?that [argument] ?scope . }" .
+
+sh:scopePropertySubject a sh:ScopeTemplate ;
+  sh:templateQuery "SELECT DISTINCT ?scope WHERE { ?scope [argument] ?that . }" .
+
+sh:scopeAllObjects a sh:ScopeTemplate ;
+  sh:templateQuery "SELECT DISTINCT ?scope WHERE { ?that ?property ?scope . }" .
+
+sh:scopeAllSubjects a sh:ScopeTemplate ;
+  sh:templateQuery "SELECT DISTINCT ?scope WHERE { ?scope ?property ?that . }" .
+
+sh:scopeQuery a sh:ScopeTemplate ;
+  sh:templateQuery "[argument]" .
+

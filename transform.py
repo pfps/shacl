@@ -181,7 +181,7 @@ def transformComponent(component,node=None) :
     elif component.token == "=" :
         transformPathComponent(node,SH.equals,component[0],component[2])
     elif component.token == "∅" :
-        transformPathComponent(node,SH.notEquals,component[0],component[2])
+        transformPathComponent(node,SH.disjoint,component[0],component[2])
     elif component.token == "⟦" :
         makeList(node,SH.closed,[ transformPart(part) for part in component.part ])
     elif component.token == "∋" :

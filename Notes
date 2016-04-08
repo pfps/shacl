@@ -95,7 +95,7 @@ pattern part of a query that will implement the shape.  If there is no
 sh:templatePattern then it looks for sh:templateFilter, wraps that in a
 negated FILTER, and constructs the shape.
 
-sh:notEqualsT a sh:ComponentTemplate ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+sh:disjointT a sh:ComponentTemplate ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
   sh:list shmm:pathShape ;
   sh:propValues ( ( rdf:rest rdf:rest ) [ sh:hasValue rdf:nil ] ) ;
   sh:propValues ( rdf:first [ sh:shape shmm:pathShape ; sh:argumentName "path1" ] ) ; 

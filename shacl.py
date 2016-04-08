@@ -147,19 +147,19 @@ def maxLengthC(g,value,context) :		# fragment PrimaryExpression
     return fragment(g,frag, "Length too long, must be at most %s" % value, context)
 
 def minInclusiveC(g,value,context) :		# fragment PrimaryExpression
-    frag = "(isLiteral(?this) && ?this >= %s)" % value
+    frag = "COALESCE(?this >= %s,false)" % value
     return fragment(g,frag, "Too small, must be at least %s" % value, context)
 
 def minExclusiveC(g,value,context) :		# fragment PrimaryExpression
-    frag = "(isLiteral(?this) && ?this > %s)" % value
+    frag = "COALESCE(?this > %s,false)" % value
     return fragment(g,frag, "Too small, must be greater than %s" % value, context)
 
 def maxInclusiveC(g,value,context) :		# fragment PrimaryExpression
-    frag = "(isLiteral(?this) && ?this <= %s)" % value
+    frag = "COALESCE(?this <= %s,false)" % value
     return fragment(g,frag, "Too big, must be at most %s" % value, context)
 
 def maxExclusiveC(g,value,context) :		# fragment PrimaryExpression
-    frag = "(isLiteral(?this) && ?this < %s)" % value
+    frag = "COALESCE(?this < %s,false)" % value
     return fragment(g,frag, "Too big, must be less than %s" % value, context)
 
 def nodeKindC(g,value,context) :		# fragment PrimaryExpression
@@ -193,7 +193,7 @@ def equalsC(g,value,context) :			# fragPat GroupGraphPattern
     return fragmentPattern(g,frag,"Paths don't have equal values", context)
 
 ## this is the approved syntax but maybe sh:disjoint would be a better name
-def notEqualsC(g,value,context) :		# fragpat GroupGraphPattern piece
+def disjointC(g,value,context) :		# fragpat GroupGraphPattern piece
     path1 = pathtoSPARQL(g,g.value(value,RDF.first))
     path2 = pathtoSPARQL(g,g.value(g.value(value,RDF.rest),RDF.first))
     frag = """?this %(path1)s ?value1 . ?this %(path2)s ?value1 .""" % \
@@ -456,7 +456,7 @@ constructs = { 'in':inC , 'class':classC, 'classIn':classInC, 'datatype':datatyp
                'minInclusive':minInclusiveC, 'minExclusive':minExclusiveC, 
                'maxInclusive':maxInclusiveC, 'maxExclusive':maxExclusiveC,
                'nodeKind':nodeKindC, 'pattern':patternC,
-               'equals':equalsC, 'notEquals':notEqualsC,
+               'equals':equalsC, 'disjoint':disjointC,
                'lessThan':lessThanC, 'lessThanOrEquals':lessThanOrEqualsC,
                'propValues':propValuesC, 'list':listC,
                'hasValue':hasValueC, 'uniqueLang':uniqueLangC,

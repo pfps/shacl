@@ -113,7 +113,7 @@ The syntax of the various SHACL core components are:
   sh:pattern      string used as a regular expression pattern  or
                   two-element list of pattern and string used as flags
   sh:equals       two paths
-  sh:notEquals    two paths
+  sh:disjoint    two paths
   sh:lessThan     two paths
   sh:lessThanOrEqual two paths
   sh:propValues   two-element list of path and shape - replaces sh:property
@@ -286,7 +286,7 @@ are processed similar to path processing in the SPARQL 1.1 Query Language.
 :: The SPARQL str representation each in-focus node matches pattern, using flags if present.
 * sh:equals ( path1 path2 )
 :: Each in-focus node has the same values for each path starting at the node.
-* sh:notEquals ( path1 path2 )
+* sh:disjoint ( path1 path2 )
 :: Each in-focus node has different sets of values for each path starting at the node.
 * sh:lessThan ( path1 path2 )
 :: For each in-focus node each value for a path is < each value for the next path.

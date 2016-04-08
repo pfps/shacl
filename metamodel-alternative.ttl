@@ -155,8 +155,8 @@ sh:equals a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:Li
   sh:list shmm:pathShape ;
   sh:propValues ((rdf:rest rdf:rest) [ sh:hasValue rdf:nil ] ) .
 
-sh:notEquals a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
-  sh:scopePropertyObject sh:notEquals ;
+sh:disjoint a sh:Component ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+  sh:scopePropertyObject sh:disjoint ;
   sh:list shmm:pathShape ;
   sh:propValues ((rdf:rest rdf:rest) [ sh:hasValue rdf:nil ] ) .
 

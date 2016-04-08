@@ -84,7 +84,7 @@ component : iri			    #cname	// validate against named shape
  | 'BlankNode'			    #cnkBlank	// kind of node
  | regex '★' ( string )?	    #cpattern	// matches pattern (with flags)
  | path '=' path		    #cequals	// path values the same
- | path '∅' path		    #cnotEquals	// path values disjoint
+ | path '∅' path		    #cdisjoint	// path values disjoint
  | path '<' path		    #clt	// path1 values < path2 values
  | path '≤' path		    #clte	// path1 values ≤ path2 values
  | '⟦' pathpart * '⟧'		    #cclosed	// no other property has values
