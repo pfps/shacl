@@ -560,7 +560,7 @@ sh:scopeClass a sh:ScopeTemplate ;
   sh:templateQuery "SELECT DISTINCT ?scope WHERE { ?scope rdf:type/rdfs:subClassOf* [argument] }" .
 
 sh:scopeNode a sh:ScopeTemplate ;
-  sh:templateQuery "SELECT ( [argument] as ?scope ) WHERE { }"" .
+  sh:templateQuery "SELECT ( [argument] as ?scope ) WHERE { }" .
 
 sh:scopePropertyObject a sh:ScopeTemplate ;
   sh:templateQuery "SELECT DISTINCT ?scope WHERE { ?that [argument] ?scope . }" .
