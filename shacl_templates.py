@@ -248,8 +248,8 @@ constructs = { 'partition':partitionC}
 # process a shape for shape invocation
 def processShapeInvocation(g,shape,printShapes=False) :
     # process scopes
-#    scopes = []
-#    severity = g.value(shape,SH.severity,default=Violation)
+    scopes = []
+    severity = g.value(shape,SH.severity,default=Violation)
 #    for scopeValue in g.objects(shape,SH.scopeNode) :
 #        scopes.append("VALUES ?this { %s }" % scopeValue.n3())
 #    for scopeValue in g.objects(shape,SH.scopeClass) :
@@ -284,10 +284,11 @@ def processScopes(g,shape,printShapes=False) :
     for template in metamodel.subjects(RDF.type,SH.ScopeTemplate) :
         for value in g.objects(shape,template) :
             scopes.append( constructScopeTemplate(g,template,value) )
-    return constructScope(g,shape,scopes,context)
+    result = constructScope(g,shape,scopes,context)
+    return result
 
 def constructScopeTemplate(g,template,argument) :
-    context = dict(context)
+    context = dict()
     context["argument"] = argument # add argument value to context
     for argComponent in metamodel.objects(template,SH.propValues) : # look for arguments
         argPath = pathtoSPARQL(metamodel,metamodel.value(argComponent,RDF.first))
@@ -310,6 +311,7 @@ def constructScope(g,shape,scopes,context) :
     if ( len(scopes) > 0 ) :
         scope = "{ SELECT ( ?scope as ?this ) { { # SCOPE\n" + \
                 "\n} UNION # SCOPE\n { ".join(scopes) + " } } }\n"
+        return scope
     else : return None
 
 # process a shape in a context
