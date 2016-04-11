@@ -12,7 +12,7 @@
 @prefix shmm: <http://www.w3.org/ns/shaclmm#> .
 
 
-## PART 1: SHACL core
+## PART 1: Core
 
 sh:Shape a rdfs:Class .
 
@@ -65,10 +65,23 @@ shmm:ValidationResultSyntax a sh:Shape ; sh:scopeClass sh:ValidationResult ;
 
 ## PART 2: Description of built-ins, for validation
 
+# Auxiliary shapes
+
 shmm:notBlank a sh:Shape ;
   sh:or ( [ a sh:Shape ; sh:nodeKind sh:IRI ] [ a sh:Shape ; sh:nodeKind sh:Literal ] ) .
 
-# scopes
+shmm:pathShape a sh:Shape ;
+  sh:or ( shmm:pathPartShape
+          [ a sh:Shape ; sh:list shmm:pathPartShape ] ) .
+shmm:pathPartShape a sh:Shape ;
+ sh:or ( shmm:inverseShape         # inverse of a property
+         [ a sh:Shape ; sh:nodeKind sh:IRI ] ) . # property
+shmm:inverseShape a sh:Shape ;
+ sh:propValues ( sh:inverse [ a sh:Shape ; sh:nodeKind sh:IRI ;
+ 	       	 	      sh:minCount 1 ; sh:maxCount 1 ] ) .
+
+# Scopes
+
 sh:scopeClass           a rdf:Property; a sh:Shape; rdfs:domain sh:Shape; rdfs:range rdfs:Class ;
   sh:nodeKind sh:IRI .
 shmm:scopeClassShape a sh:Shape ; sh:scopeClass sh:Shape ;
@@ -99,24 +112,14 @@ sh:scopeAllSubjects     a rdf:Property; a sh:Shape; rdfs:domain sh:Shape; rdfs:r
 shmm:scopeAllSubjectsShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:scopeAllSubjects sh:scopeAllSubjects ) .
 
+# Filter
+
 sh:filter               a rdf:Property; a sh:Shape; rdfs:domain sh:Shape; rdfs:range sh:Shape ;
   sh:class sh:Shape .
 shmm:filterShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:filter sh:filter ) .
 
-
-# Shapes for paths
-shmm:pathShape a sh:Shape ;
-  sh:or ( shmm:pathPartShape
-          [ a sh:Shape ; sh:list shmm:pathPartShape ] ) .
-shmm:pathPartShape a sh:Shape ;
- sh:or ( shmm:inverseShape         # inverse of a property
-         [ a sh:Shape ; sh:nodeKind sh:IRI ] ) . # property
-shmm:inverseShape a sh:Shape ;
- sh:propValues ( sh:inverse [ a sh:Shape ; sh:nodeKind sh:IRI ;
- 	       	 	      sh:minCount 1 ; sh:maxCount 1 ] ) .
-
-# components
+# Components
 
 sh:in a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
   sh:list shmm:notBlank .
@@ -181,7 +184,8 @@ shmm:maxExclusiveShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:maxExclusive sh:maxExclusive ) .
 
 sh:nodeKind a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ;
-  sh:in ( sh:BlankNode sh:IRI sh:Literal ) .
+  sh:in ( sh:BlankNode sh:IRI sh:Literal sh:BlankNodeOrIRI
+  	  sh:BlankNodeOrLiteral sh:IRIOrLiteral ) .
 shmm:nodeKindShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:nodeKind sh:nodeKind ) .
 
@@ -296,8 +300,35 @@ sh:query	a rdf:Property; a sh:Shape ; rdfs:domain sh:Shape; rdfs:range xsd:strin
 shmm:queryShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:query sh:query ) .
 
+# Scopes Templates
 
-### Template extensions
+sh:ScopeTemplate a rdfs:Class; rdfs:subClassOf rdf:Property; rdfs:subClassOf sh:Shape.
+
+shmm:queryScopeTemplateUniques a sh:Shape ; sh:scopeClass sh:scopeTemplate ;
+  sh:propValues ( sh:templateQuery   [ a sh:Shape ; sh:maxCount 1 ] ) .
+
+sh:scopeClass a sh:ScopeTemplate ;
+  sh:templateQuery "SELECT DISTINCT ?scope WHERE { ?scope rdf:type/rdfs:subClassOf* [argument] }" .
+
+sh:scopeNode a sh:ScopeTemplate ;
+  sh:templateQuery "SELECT ( [argument] as ?scope ) WHERE { }" .
+
+sh:scopePropertyObject a sh:ScopeTemplate ;
+  sh:templateQuery "SELECT DISTINCT ?scope WHERE { ?that [argument] ?scope . }" .
+
+sh:scopePropertySubject a sh:ScopeTemplate ;
+  sh:templateQuery "SELECT DISTINCT ?scope WHERE { ?scope [argument] ?that . }" .
+
+sh:scopeAllObjects a sh:ScopeTemplate ;
+  sh:templateQuery "SELECT DISTINCT ?scope WHERE { ?that ?property ?scope . }" .
+
+sh:scopeAllSubjects a sh:ScopeTemplate ;
+  sh:templateQuery "SELECT DISTINCT ?scope WHERE { ?scope ?property ?that . }" .
+
+sh:scopeQuery a sh:ScopeTemplate ;
+  sh:templateQuery "[argument]" .
+
+### Component Template
 
 sh:ComponentTemplate a rdfs:Class; rdfs:subClassOf rdf:Property; rdfs:subClassOf sh:Shape.
 
@@ -315,12 +346,12 @@ shmm:queryTemplateUniques a sh:Shape ; sh:scopeClass sh:ComponentTemplate ;
   sh:propValues ( sh:templateMessage [ a sh:Shape ; sh:uniqueLang true ] ) .
 
 sh:argumentName a rdf:Property ; rdfs:domain sh:Shape ; rdfs:range xsd:string .
-sh:argumentDefault a rdf:Property ; rdfs:domain sh:Shape .
+sh:defaultValue a rdf:Property ; rdfs:domain sh:Shape .
 
 shmm:argumentShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:argumentName [ a sh:Shape ; sh:datatype xsd:string ;
   		  		    sh:minCount 1 ; sh:maxCount 1 ] ) ;
-  sh:propValues ( sh:argumentDefault [ a sh:Shape ; sh:datatype xsd:string ;
+  sh:propValues ( sh:defaultValue [ a sh:Shape ; sh:datatype xsd:string ;
   		  		       sh:maxCount 1 ] ) .
 
 # Implementation of most built-in constructs
@@ -390,14 +421,14 @@ sh:maxExclusive a sh:ComponentTemplate ;
 sh:nodeKind a sh:ComponentTemplate ; 
   sh:templateMessage "Not of correct kind [argument]"@en ;
   sh:message "Has to be sh:BlankNode, sh:IRI, or sh:Literal"@en ;
-  sh:templateFilter """((isIRI(?this) && [argument] = sh:IRI) ||
-         (isLiteral(?this) && [argument] = sh:Literal) ||
- 	 (isBlank(?this) && [argument] = sh:BlankNode))""" .
+  sh:templateFilter """((isIRI(?this) && ([argument] = sh:IRI || [argument] = sh:BlankNodeOrIRI || [argument] = sh:IRIOrLiteral)) ||
+         (isLiteral(?this) && ([argument] = sh:Literal || [argument] = sh:BlankNodeOrLiteral || [argument] = sh:IRIOrLiteral)) ||
+ 	 (isBlank(?this) && ([argument] = sh:BlankNode || [argument] = sh:BlankNodeOrLiteral || [argument] = sh:BlankNodeOrLiteral)))""" .
 
 sh:pattern a sh:ComponentTemplate ; 
   sh:propValues ( rdf:first [ a sh:Shape ; sh:argumentName "pattern" ] ) ;
   sh:propValues ( ( rdf:rest rdf:first ) [ a sh:Shape ; sh:argumentName "flags" ;
-  		    	     	       	     	      	sh:argumentDefault "" ] ) ;
+  		    	     	       	     	      	sh:defaultValue "" ] ) ;
   sh:templateMessage "Does not match pattern"@en ;
   sh:message "Has to be a string or a list of two strings"@en ;
   sh:templateFilter """( !isBlank(?this) && 
@@ -549,31 +580,29 @@ sh:query a sh:ComponentTemplate ;
 
 # sh:partition not possible because partition tears shapes apart
 
-# scopes
 
-sh:ScopeTemplate a rdfs:Class; rdfs:subClassOf rdf:Property; rdfs:subClassOf sh:Shape.
+# PART 4: Compatability
 
-shmm:queryScopeTemplateUniques a sh:Shape ; sh:scopeClass sh:scopeTemplate ;
-  sh:propValues ( sh:templateQuery   [ a sh:Shape ; sh:maxCount 1 ] ) .
+sh:property a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+  sh:list [ a sh:Shape ; sh:nodeKind sh:IRI ] .
+shmm:propertyShape a sh:Shape ; sh:scopeClass sh:Shape ;
+  sh:propValues ( sh:property sh:property ) .
 
-sh:scopeClass a sh:ScopeTemplate ;
-  sh:templateQuery "SELECT DISTINCT ?scope WHERE { ?scope rdf:type/rdfs:subClassOf* [argument] }" .
+sh:property a sh:ComponentTemplate ;
+  sh:propValues ( sh:predicate [ a sh:Shape ; sh:nodeKind sh:IRI ;
+  		  	       	 sh:argumentName "path" ] ) ;
+  sh:templateMessage "In path [p(path)]"@en ;
+  sh:message "Argument is shape containing sh:predicate as property"@en ;
+  sh:templateQuery """[c(p(path) shape)]""" .
 
-sh:scopeNode a sh:ScopeTemplate ;
-  sh:templateQuery "SELECT ( [argument] as ?scope ) WHERE { }" .
+sh:inverseProperty a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+  sh:list [ a sh:Shape ; sh:nodeKind sh:IRI ] .
+shmm:inversePropertyShape a sh:Shape ; sh:scopeClass sh:Shape ;
+  sh:propValues ( sh:inverseProperty sh:inverseProperty ) .
 
-sh:scopePropertyObject a sh:ScopeTemplate ;
-  sh:templateQuery "SELECT DISTINCT ?scope WHERE { ?that [argument] ?scope . }" .
-
-sh:scopePropertySubject a sh:ScopeTemplate ;
-  sh:templateQuery "SELECT DISTINCT ?scope WHERE { ?scope [argument] ?that . }" .
-
-sh:scopeAllObjects a sh:ScopeTemplate ;
-  sh:templateQuery "SELECT DISTINCT ?scope WHERE { ?that ?property ?scope . }" .
-
-sh:scopeAllSubjects a sh:ScopeTemplate ;
-  sh:templateQuery "SELECT DISTINCT ?scope WHERE { ?scope ?property ?that . }" .
-
-sh:scopeQuery a sh:ScopeTemplate ;
-  sh:templateQuery "[argument]" .
-
+sh:inverseProperty a sh:ComponentTemplate ;
+  sh:propValues ( sh:predicate [ a sh:Shape ; sh:nodeKind sh:IRI ;
+  		  	       	 sh:argumentName "path" ] ) ;
+  sh:templateMessage "In path [p(path)]"@en ;
+  sh:message "Argument is shape containing sh:predicate as property"@en ;
+  sh:templateQuery """[c(^p(path) shape)]""" .   ## DOES THIS WORK??

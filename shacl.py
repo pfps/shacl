@@ -169,7 +169,16 @@ def nodeKindC(g,value,context) :		# fragment PrimaryExpression
         return fragment(g,"isIRI(?this)","Not IRI", context)
     if value == SH.Literal :
         return fragment(g,"isLiteral(?this)", "Not literal", context)
-                    
+    if value == SH.BlankNodeOrIRI :
+        return fragment(g,"(isBlank(?this)||isIRI(?this))", 
+                        "Not IRI or blank", context)
+    if value == SH.BlankNodeOrLiteral :
+        return fragment(g,"(isBlank(?this)||isLiteral(?this))", 
+                        "Not literal or blank", context)
+    if value == SH.IRIOrLiteral :
+        return fragment(g,"(isIRI(?this)||isLiteral(?this))", 
+                        "Not IRI or literal", context)
+
 def patternConstruct(g,pattern,flags,context) :	# fragment PrimaryExpression
     frag = """(!isBlank(?this) && REGEX(STR(?this),"%(pattern)s","%(flags)s"))""" % \
            {"pattern":pattern,"flags":flags}
@@ -192,7 +201,6 @@ def equalsC(g,value,context) :			# fragPat GroupGraphPattern
         { "path1":pathS(path1), "path2":pathS(path2) }
     return fragmentPattern(g,frag,"Paths don't have equal values", context)
 
-## this is the approved syntax but maybe sh:disjoint would be a better name
 def disjointC(g,value,context) :		# fragpat GroupGraphPattern piece
     path1 = pathtoSPARQL(g,g.value(value,RDF.first))
     path2 = pathtoSPARQL(g,g.value(g.value(value,RDF.rest),RDF.first))
@@ -447,6 +455,38 @@ def closedCompatabilityC(g,value,me,context) :
     frag = """( ! EXISTS ( ?this %(closed) ?value ) )""" % { "closed":closed }
     return fragment(g,frag,"Value found for disallowed property", context)
 
+### these don't currently set predicate and object, should they??
+def equalsCompatabilityC(g,value,me,context) :			# fragPat GroupGraphPattern
+    path1 = pathtoSPARQL(g,value)
+    path2 = pathtoSPARQL(g,g.value(me,sh:predicate))
+    frag = """{ { ?this %(path1)s ?value . MINUS { ?this %(path2)s ?value . } } UNION 
+         { ?this %(path2)s ?value . MINUS { ?this %(path1)s ?value.  } } }""" % \
+        { "path1":pathS(path1), "path2":pathS(path2) }
+    return fragmentPattern(g,frag,"Paths don't have equal values", context)
+
+def disjointCompatabilityC(g,value,me,context) :		# fragpat GroupGraphPattern piece
+    path1 = pathtoSPARQL(g,value)
+    path2 = pathtoSPARQL(g,g.value(me,sh:predicate))
+    frag = """?this %(path1)s ?value1 . ?this %(path2)s ?value1 .""" % \
+        { "path1":pathS(path1), "path2":pathS(path2) }
+    return fragmentPattern(g,frag,"Paths share a value", context)
+                    
+def lessThanCompatabilityC(g,value,me,context) :		# fragpat GroupGraphPattern pieces
+    path1 = pathtoSPARQL(g,value)
+    path2 = pathtoSPARQL(g,g.value(me,sh:predicate))
+    frag = """?this %(path1)s ?value1 . ?this %(path2)s ?value2 .
+		FILTER ( ! (?value1 < ?value2) )""" % \
+            { "path1":pathS(path1), "path2":pathS(path2) }
+    return fragmentPattern(g,frag,"Second path value too small", context)
+                    
+def lessThanOrEqualsCompatabilityC(g,value,me,context) :	# fragpat GroupGraphPattern pieces
+    path1 = pathtoSPARQL(g,value)
+    path2 = pathtoSPARQL(g,g.value(me,sh:predicate))
+    frag = """?this %(path1)s ?value1 . ?this %(path2)s ?value2 .
+		FILTER ( ! (?value1 <= ?value2) )""" % \
+            { "path1":pathS(path1), "path2":pathS(path2) }
+    return fragmentPattern(g,frag,"Second path value too small", context)
+
 ## control of SPARQL query construction
 
 # mapping from construct property name to function that processes it
@@ -466,11 +506,18 @@ constructs = { 'in':inC , 'class':classC, 'classIn':classInC, 'datatype':datatyp
 compatabilityConstructs = { 'constraint':constraintC, 'property':propertyC,
                             'inverseProperty':inversePropertyC, 
                             'qualifiedValueShape':qualifiedValueShapeC,
+                            'valueShape':shapeC,
                             'patternC':patternCompatibilityC,
-                            'closedC':closedCompatabilityC }
+                            'closedC':closedCompatabilityC,
+                            'equalsC':equalsCompatabilityC,
+                            'disjointC':disjointCompatabilityC,
+                            'lessThanC':lessThanCompatabilityC
+                            'lessThanOrEqualsC':lessThanOrEqualsCompatabilityC
+			}
+
 
 # process a shape for shape invocation
-def processShapeInvocation(g,shape) :
+def processShapeInvocation(g,shape,compatability=False) :
     # process scopes
     scopes = []
     severity = g.value(shape,SH.severity,default=Violation)
@@ -488,6 +535,9 @@ def processShapeInvocation(g,shape) :
         scopes.append("{ SELECT DISTINCT ?this WHERE { ?this ?property ?that . } }")
     for scopeValue in g.objects(shape,SH.scopeQuery) :
         scopes.append("{ SELECT DISTINCT ( ?scope AS ?this ) WHERE { %s } }" % scopeValue.n3())
+    if compatability :
+        for scopeValue in g.objects(shape,SH.scope) :
+            scopes.append(processScopeCompatability(g,scopeValue))
     if ( len(scopes) > 0 ) :
         if ( len(scopes) == 1 ) : scope = scopes[0]
         else : scope = "{ { # SCOPE\n" + "\n} UNION # SCOPE\n { ".join(scopes) + " } }\n"
@@ -497,6 +547,17 @@ def processShapeInvocation(g,shape) :
     else :
 #        print "No scopes for shape", shape
         return None
+
+def processScopeCompatability(g,scope) :
+    scopeTypes = g.objects(scope,RDF.type)
+    if SH.PropertyScope in scopeTypes :
+        return "{ SELECT DISTINCT ?this WHERE { ?that %s ?this . } }" % g.value(scope,SH.predicate),n3()
+    if SH.InversePropertyScope in scopeTypes :
+        return "{ SELECT DISTINCT ?this WHERE { ?this %s ?that . } }" % g.value(scope,SH.predicate),n3()
+    if SH.AllObjectsScope in scopeTypes :
+        return "{ SELECT DISTINCT ?this WHERE { ?that ?property ?this . } }"
+    if SH.AllSubjectsScope in scopeTypes :
+        return "{ SELECT DISTINCT ?this WHERE { ?this ?property ?that . } }"
 
 def processShape(g,shape,context,compatability=False) :
     shape,filters = processShapeInternal(g,shape,context,compatability=False)
@@ -508,6 +569,10 @@ def processShapeInternal(g,shape,context,exclusions=[],compatability=False) :
     context = dict(context,severity=severity)
     filters = [ processShape(g,filterValue,context)
                 for filterValue in g.objects(shape,SH.filter) ]
+    if compatability :
+        filtersC = [ processShape(g,filterValue,context)
+                     for filterValue in g.objects(shape,SH.filterShape) ]
+        filters = filters + filtersC
     if ( len(filters) > 0 ) : # filters use severity Violation
         fBodies = [ """SELECT %(projection)s ?this WHERE { { %(body)s }
 				FILTER ( sameTerm(?severity,%(violation)s) ) }""" % \
@@ -543,23 +608,23 @@ def constructShape(g,shape,components,context) :
 ## published interface
 
 # process a single shape
-def validateShape(dataGraph,shape,shapesGraph,printShapes=False) :
+def validateShape(dataGraph,shape,shapesGraph,printShapes=False,compatability=False) :
     if printShapes : print "SHAPE", curie(shapesGraph,shape)
-    shape = processShapeInvocation(shapesGraph,shape)
+    shape = processShapeInvocation(shapesGraph,shape,compatability)
     if shape is not None :
         if printShapes : print "SHAPE with scopes"
         return dataGraph.query(shape)
     else : return []
 
 # process a shapes graph
-def validate(dataGraph,shapesGraph,printShapes=False,printResults=False) :
+def validate(dataGraph,shapesGraph,printShapes=False,printResults=False,compatability=False) :
     # process each shape in the graph
     shapesQuery = """SELECT DISTINCT ?shape 
                      WHERE { ?shape rdf:type/rdfs:subClassOf* %s }""" % SH.Shape.n3()
     results = []
     for row in shapesGraph.query(shapesQuery) :
         if isinstance(row[0],rdflib.term.URIRef) :
-            for result in validateShape(dataGraph,row[0],shapesGraph,printShapes) :
+            for result in validateShape(dataGraph,row[0],shapesGraph,printShapes,compatability) :
                 results.append(result)
                 if printResults : printResult(result,shapesGraph)
     return results

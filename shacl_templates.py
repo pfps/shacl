@@ -10,8 +10,12 @@
 ## except partition, which uses an internal-only interface
 
 ## NOT HANDLED
-## scopes as templates; scope templates
 ## per-language messages
+
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import str
+from past.builtins import basestring
 
 import string
 import itertools
@@ -112,7 +116,7 @@ def listElements(g,head) :
     while ( ( head is not None ) and ( head != RDF.nil ) ) :
         elements.append(g.value(head,RDF.first))
         head = g.value(head,RDF.rest)
-    if ( head is None ) : print "MALFORMED LIST"
+    if ( head is None ) : print( "MALFORMED LIST")
     return elements
 
 universalShape = "SELECT ?object WHERE { BIND ( true AS ?object ) FILTER ( true=false ) }"
@@ -209,7 +213,7 @@ def parttoSPARQL(g,part) :
            if (part,SH.inverse,None) in g else part.n3()
 
 def pathtoSPARQL(g,value) :
-    if value == RDF.nil : print "EMPTY PATH" ; return ""
+    if value == RDF.nil : print( "EMPTY PATH" ); return ""
     path = [ parttoSPARQL(g,part) for part in listElements(g,value) ] \
            if (value,RDF.rest,None) in g else [ parttoSPARQL(g,value) ]
     return "/".join(path)
@@ -269,11 +273,11 @@ def processShapeInvocation(g,shape,printShapes=False) :
 ##    if ( len(scopes) > 0 ) :
 ##        scope = "{ # SCOPE\n" + "\n} UNION # SCOPE\n { ".join(scopes) + " }\n"
         body = processShape(g,shape,{"severity":severity,"outer":"","projection":"","group":"","inner":scope})
-        if body == "" and printShapes : print "No bodies for shape", shape
+        if body == "" and printShapes : print( "No bodies for shape", shape)
         return None if body == "" else \
             """PREFIX sh: <http://www.w3.org/ns/shacl#>\n""" + body
     else :
-        if printShapes : print "No scopes for shape", shape
+        if printShapes : print( "No scopes for shape", shape)
         return None
 
 def processScopes(g,shape,printShapes=False) :
@@ -294,7 +298,7 @@ def constructScopeTemplate(g,template,argument) :
         argPath = pathtoSPARQL(metamodel,metamodel.value(argComponent,RDF.first))
         argShape = metamodel.value(metamodel.value(argComponent,RDF.rest),RDF.first)
         argName = metamodel.value(argShape,SH.argumentName)
-        argDefault = metamodel.value(argShape,SH.argumentDefault,
+        argDefault = metamodel.value(argShape,SH.defaultValue,
                                      default= Literal("",datatype=XSD.string))
         if argName is not None :
             argVQuery = "SELECT ?value WHERE { ?shape %s ?value }" % argPath
@@ -304,7 +308,7 @@ def constructScopeTemplate(g,template,argument) :
     query = metamodel.value(template,SH.templateQuery)
     if query is not None :
         return substitut(query,g,context)
-    print "SCOPE HAS NO CODE",template
+    print( "SCOPE HAS NO CODE",template)
     return ""
 
 def constructScope(g,shape,scopes,context) :
@@ -344,7 +348,7 @@ def constructTemplate(g,template,argument,context) :
         argPath = pathtoSPARQL(metamodel,metamodel.value(argComponent,RDF.first))
         argShape = metamodel.value(metamodel.value(argComponent,RDF.rest),RDF.first)
         argName = metamodel.value(argShape,SH.argumentName)
-        argDefault = metamodel.value(argShape,SH.argumentDefault,
+        argDefault = metamodel.value(argShape,SH.defaultValue,
                                      default= Literal("",datatype=XSD.string))
         if argName is not None :
             argVQuery = "SELECT ?value WHERE { ?shape %s ?value }" % argPath
@@ -362,7 +366,7 @@ def constructTemplate(g,template,argument,context) :
         query = metamodel.value(template,SH.templateQuery)
         if query is not None :
             return substitut(query,g,context)
-    print "TEMPLATE HAS NO CODE",template
+    print( "TEMPLATE HAS NO CODE",template)
     return ""
 
 def setupMetamodel(meta="./metamodel.ttl") :
@@ -372,9 +376,9 @@ def setupMetamodel(meta="./metamodel.ttl") :
 
 # process a single shape
 def validateShape(dataGraph,shape,shapesGraph,printShapes=False) :
-    if printShapes : print "SHAPE NAME ", shape
+    if printShapes : print( "SHAPE NAME ", shape)
     shape = processShapeInvocation(shapesGraph,shape,printShapes)
-#    if printShapes : print "SHAPE SHAPE", shape
+#    if printShapes : print( "SHAPE SHAPE", shape)
     if shape is not None : return dataGraph.query(shape)
     else : return []
 
@@ -383,9 +387,9 @@ def validate(dataGraph,shapesGraph,printShapes=False,validateShapes=False) :
     setupMetamodel(meta="./metamodel.ttl")
     # validate the shapes graph (but not the metamodel graph!)
     if validateShapes :
-        print "VALIDATING shapes graph against metamodel"
+        print( "VALIDATING shapes graph against metamodel")
         validate(shapesGraph,metamodel)
-        print "VALIDATING shapes graph against metamodel END"
+        print( "VALIDATING shapes graph against metamodel END")
     # process each shape in the graph
     shapesQuery = """SELECT DISTINCT ?shape 
                      WHERE { ?shape rdf:type/rdfs:subClassOf* %s }""" % SH.Shape.n3()
@@ -395,22 +399,22 @@ def validate(dataGraph,shapesGraph,printShapes=False,validateShapes=False) :
                 printResult(row,shapesGraph)
 
 def qname(node,graph) :
-  if isinstance(node,rdflib.term.URIRef) : return graph.qname(unicode(node))
+  if isinstance(node,rdflib.term.URIRef) : return graph.qname(str(node))
   else : return node.n3(graph.namespace_manager)
 
 def printResult(result,graph) :
-      try : print "SH",qname(result.shape,graph),
+      try : print( "SH",qname(result.shape,graph), end=" ")
       except AttributeError : None
-      try : print "THIS",qname(result.this,graph),
+      try : print( "THIS",qname(result.this,graph), end=" ")
       except AttributeError : None
-      try : print "S",qname(result.subject,graph),
+      try : print( "S",qname(result.subject,graph), end=" ")
       except AttributeError : None
-      try : print "P",qname(result.predicate,graph),
+      try : print( "P",qname(result.predicate,graph), end=" ")
       except AttributeError : None
-      try : print "O",qname(result.object,graph),
+      try : print( "O",qname(result.object,graph), end=" ")
       except AttributeError : None
-      try : print "MESSAGE",qname(result.message,graph),
+      try : print( "MESSAGE",qname(result.message,graph), end=" ")
       except AttributeError : None
-      try : print "SEV",qname(result.severity,graph),
+      try : print( "SEV",qname(result.severity,graph), end=" ")
       except AttributeError : None
-      print ""
+      print ("")

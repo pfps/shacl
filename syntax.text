@@ -368,7 +368,7 @@ template components.  The object of a template component triple is validated
 against the component template considered as a shape.  If the validation
 fails the template component is syntactically illegal.  The sh:propValues
 components in component templates can also have sh:argumentName and
-sh:argumentDefault triples that are used in the process of constructing the
+sh:defaultValue triples that are used in the process of constructing the
 query for template components.
 
 Component templates provide SPARQL queries to define the query via 
@@ -421,7 +421,7 @@ Other values come from sh:propValues components in the component template that
 have sh:argumentName triples in their shape.  Each such sh:propValues
 component produces a value for the object of its sh:argumentName triple that
 is either one of the values for its path starting from the its argument or
-the value of its sh:argumentDefault triple if there are no value for the path.
+the value of its sh:defaultValue triple if there are no value for the path.
 
 '''Note: Having multiple sh:propValues with the same sh:argumentName leads
 to indeterminate results.'''
