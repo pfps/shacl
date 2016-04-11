@@ -1,0 +1,184 @@
+		Compatability Between Syntaxes
+
+
+	CORE
+
+Token			Category			In new Syntax		Compatability Status
+
+sh:Shape		shape class			<similar>		built-in
+
+sh:Scope		scope class			not needed		not needed
+sh:scope		scope property			not needed		added - non-template
+sh:scopeNode		scope property			<exact>			built-in
+sh:scopeClass		scope property			<exact>			built-in
+sh:PropertyScope	scope class -> property		sh:scopePropertyObject	added - non-template
+sh:InversePropertyScope	scope class -> property		sh:scopePropertySubject	added - non-template
+sh:AllObjectsScope	scope class -> property		sh:scopeAllObjects	added - non-template
+sh:AllSubjectsScope	scope class -> property		sh:scopeAllSubjects	added - non-template
+
+sh:filterShape		filters				sh:filter		added - non-template
+
+sh:constraint		shape property			not needed		added - non-template - sh:shape
+sh:property		shape property 			sh:propValues		added
+sh:inverseProperty	shape property			not needed		added - non-template - sh:propValues
+			path  				sh:inverse 		new
+
+sh:Constraint		constraint class		not needed		not needed
+sh:NodeConstraint	constraint class		not needed		not needed
+sh:PropertyConstraint	constraint class		not needed		not needed
+sh:InversePropertyConstraint constraint class		not needed		not needed
+
+sh:predicate		component auxiliary property	not needed		added - non-template
+sh:class		component property		<exact>			built-in
+sh:classIn		component property		<exact>			built-in
+sh:directType		component property		<exact>			built-in
+sh:closed		component property		<similar>		partial? - non-template - as sh:closedC
+sh:ignoredProperties	component auxiliary property	not needed		^^
+sh:datatype		component property		<exact>			built-in
+sh:datatypeIn		component property		<exact>			built-in
+sh:equals		component property		<similar>		added - non-template - as sh:equalsC
+sh:disjoint		component property		<similar>		added - non-template - as sh:disjointC
+sh:hasValue		component property		<exact>			built-in
+sh:in			component property		<exact>			built-in
+sh:lessThan		component property		<similar>		added - non-template - as sh:lessThanC
+sh:lessThanOrEquals	component property		<similar>		added - non-template - as sh:lessThanOrEqualsC
+sh:minCount		component property		<exact>			built-in
+sh:maxCount		component property		<exact>			built-in
+sh:minLength		component property		<exact>			built-in
+sh:maxLength		component property		<exact>			built-in
+sh:maxExclusive		component property		<exact>			built-in
+sh:maxInclusive		component property		<exact>			built-in
+sh:minExclusive		component property		<exact>			built-in
+sh:minInclusive		component property		<exact>			built-in
+sh:nodeKind		component property		<exact>			built-in
+sh:pattern		component property		<similar>      		added - non-template - as patternC
+sh:flags		component auxiliary property	not needed		^^
+sh:uniqueLang		component property		<exact>			built-in
+sh:valueShape		component property		sh:shape		added - non-template
+sh:qualifiedValueShape	component property		not needed		added - non-template - uses sh:shape
+sh:qualifiedMaxCount	component auxiliary property	not needed		^^
+sh:qualifiedMinCount	component auxiliary property	not needed		^^
+sh:not			component property		<exact>			built-in
+sh:or			component property		<exact>			built-in
+sh:and			component property		<exact>			built-in
+sh:partition		component property		<similar>		TO DO
+			component property		sh:list			new
+
+sh:NodeKind		node kind class			not needed		not needed
+sh:BlankNode		node kind 			<exact>			built-in
+sh:BlankNodeOrIRI	node kind 			<exact>			built-in
+sh:BlankNodeOrLiteral	node kind 			<exact>			built-in
+sh:IRI			node kind 			<exact>			built-in
+sh:IRIOrLiteral		node kind 			<exact>			built-in
+sh:Literal		node kind 			<exact>			built-in
+
+sh:ClassConstraintComponent		component class		not needed	not needed
+sh:ClassInConstraintComponent		component class		not needed	not needed
+sh:DirectTypeConstraintComponent	component class		not needed	not needed
+sh:ClosedConstraintComponent		component class		not needed	not needed
+sh:DatatypeConstraintComponent		component class		not needed	not needed
+sh:DatatypeInConstraintComponent	component class		not needed	not needed
+sh:EqualsConstraintComponent		component class		not needed	not needed
+sh:DisjointConstraintComponent		component class		not needed	not needed
+sh:HasValueConstraintComponent		component class		not needed	not needed
+sh:InConstraintComponent		component class		not needed	not needed
+sh:LessThanConstraintComponent		component class		not needed	not needed
+sh:LessThanOrEqualsConstraintComponent	component class		not needed	not needed
+sh:MinCountConstraintComponent		component class		not needed	not needed
+sh:MaxCountConstraintComponent		component class		not needed	not needed
+sh:MinLengthConstraintComponent		component class		not needed	not needed
+sh:MaxLengthConstraintComponent		component class		not needed	not needed
+sh:MaxExclusiveConstraintComponent	component class		not needed	not needed
+sh:MaxInclusiveConstraintComponent	component class		not needed	not needed
+sh:MinExclusiveConstraintComponent	component class		not needed	not needed
+sh:MinInclusiveConstraintComponent	component class		not needed	not needed
+sh:NodeKindConstraintComponent		component class		not needed	not needed
+sh:PatternConstraintComponent		component class		not needed	not needed
+sh:UniqueLangConstraintComponent	component class		not needed	not needed
+sh:ValueShapeConstraintComponent	component class		not needed	not needed
+sh:QualifiedValueShapeConstraintComponent component class	not needed	not needed
+sh:NotConstraintComponent		component class		not needed	not needed
+sh:OrConstraintComponent		component class		not needed	not needed
+sh:AndConstraintComponent		component class		not needed	not needed
+sh:PartitionConstraintComponent		component class		not needed	not needed
+
+sh:Closed				built-in constraint	not needed	not needed
+
+sh:name				decoration			<exact>		no effect
+sh:description			decoration			<exact>		no effect
+sh:order			decoration			<exact>		no effect
+sh:group			decoration			<exact>		no effect
+sh:defaultValue			decoration			<exact>		no effect
+sh:PropertyGroup		decoration			<exact>		no effect
+
+sh:AbstractResult		validation result class		not needed	not needed
+sh:ValidationResult		validation result class		not needed	not needed
+sh:focusNode			validation property		this		built-in
+sh:subject			validation property		subject		built-in
+sh:predicate			validation property		predicate	built-in
+sh:object			validation property		object		built-in
+sh:sourceConstraint		validation property		not implemented EASY
+sh:sourceShape			validation property		not implemented EASY
+sh:sourceTemplate		validation property		not implemented EASY
+sh:detail			validation property		not implemented	NO
+sh:message			validation property		message		built-in
+sh:severity			validation property		severity	built-in
+sh:Info				validation level		<exact>		built-in
+sh:Violation			validation level		<exact>		built-in
+sh:Warning			validation level		<exact>		built-in
+
+
+	EXTENSION
+
+Token				Category		In New Syntax		Compatability Status
+
+sh:NativeScope			scope class		not needed		not needed
+sh:SPARQLScope			scope class -> property	sh:scopeQuery		EASY
+
+sh:sparql			component property	sh:query		TRIVIAL
+
+sh:NativeConstraint		constraint class	not needed		not needed
+sh:SPARQLConstraint		constraint class	not needed		not needed
+
+sh:resultAnnotation		validation property	not implemented		EASY
+sh:annotationProperty		annotation property	not implemented		EASY
+sh:annotationVarName		annotation property	not implemented		EASY
+sh:annotationValue		annotation property	not implemented		EASY
+
+sh:Template			template class		not needed		not needed
+sh:ScopeTemplate		template class		<exact>			built-in
+sh:ConstraintTemplate		template class		sh:ComponentTemplate	TRIVIAL
+sh:PropertyValueConstraintTemplate template class	not needed		not needed
+sh:InversePropertyValueConstraintTemplate template class not needed		not needed
+
+sh:validationFunction		template property	sh:templateFilter	TRIVIAL
+				template property	sh:templatePattern	new
+				template property	sh:templateHaving	new
+sh:sparql			template property	sh:templateQuery	TRIVIAL
+sh:labelTemplate		template property	sh:templateMessage	TRIVIAL
+sh:argument			template property	not neeeded		TO DO - like sh:propValues
+sh:Argument			argument class		not needed		not needed
+sh:optional			argument property	not needed		TO DO
+sh:name				argument property	sh:argumentName		TRIVIAL
+sh:description			argument property	<exact>			no effect
+sh:defaultValue			argument property	<exact>			built-in
+
+sh:Function			function class		not possible		no
+sh:returnType			functions		not possible		no
+sh:value			function argument	not possible		no
+sh:arg1				function argument	not possible		no
+sh:arg2				function argument	not possible		no
+...				function argument	not possible		no
+
+sh:derivedValues		component property	not implemented		TO DO
+sh:DerivedValuesTemplate	template class		not needed		not needed
+
+OTHER
+
+sh:defaultValueType		other			not needed		not needed
+sh:DefaultValueTypeRule		other			not needed		not needed
+sh:hasShape			other			not needed		not needed
+sh:AbstractDatatypePropertyConstraint	 other		not needed		not needed
+
+sh:shapesGraph			other			not implemented		TO DO - preprocessor
+sh:entailment			other			<exact>			no effect

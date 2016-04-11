@@ -157,7 +157,7 @@ def constructQuery(g,pattern,filter,having,context) :
     result = substitut(body,g,context)
     return result
 
-def processShapeInternal(g,shape,context,exclusions=[],compatability=False) :
+def processShapeInternal(g,shape,context,exclusions=[]) :
     assert shape is not None
     severity = g.value(shape,SH.severity,default=context["severity"])
     context = dict(context,severity=severity)
