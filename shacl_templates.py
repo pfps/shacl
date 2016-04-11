@@ -313,7 +313,7 @@ def constructScopeTemplate(g,template,argument) :
 
 def constructScope(g,shape,scopes,context) :
     if ( len(scopes) > 0 ) :
-        scope = "{ SELECT ( ?scope as ?this ) { { # SCOPE\n" + \
+        scope = "{ SELECT ( ?scope as ?this ) WHERE { { # SCOPE\n" + \
                 "\n} UNION # SCOPE\n { ".join(scopes) + " } } }\n"
         return scope
     else : return None
