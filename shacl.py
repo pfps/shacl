@@ -458,7 +458,7 @@ def closedCompatabilityC(g,value,me,context) :
 ### these don't currently set predicate and object, should they??
 def equalsCompatabilityC(g,value,me,context) :			# fragPat GroupGraphPattern
     path1 = pathtoSPARQL(g,value)
-    path2 = pathtoSPARQL(g,g.value(me,sh:predicate))
+    path2 = pathtoSPARQL(g,g.value(me,SH.predicate))
     frag = """{ { ?this %(path1)s ?value . MINUS { ?this %(path2)s ?value . } } UNION 
          { ?this %(path2)s ?value . MINUS { ?this %(path1)s ?value.  } } }""" % \
         { "path1":pathS(path1), "path2":pathS(path2) }
@@ -466,14 +466,14 @@ def equalsCompatabilityC(g,value,me,context) :			# fragPat GroupGraphPattern
 
 def disjointCompatabilityC(g,value,me,context) :		# fragpat GroupGraphPattern piece
     path1 = pathtoSPARQL(g,value)
-    path2 = pathtoSPARQL(g,g.value(me,sh:predicate))
+    path2 = pathtoSPARQL(g,g.value(me,SH.predicate))
     frag = """?this %(path1)s ?value1 . ?this %(path2)s ?value1 .""" % \
         { "path1":pathS(path1), "path2":pathS(path2) }
     return fragmentPattern(g,frag,"Paths share a value", context)
                     
 def lessThanCompatabilityC(g,value,me,context) :		# fragpat GroupGraphPattern pieces
     path1 = pathtoSPARQL(g,value)
-    path2 = pathtoSPARQL(g,g.value(me,sh:predicate))
+    path2 = pathtoSPARQL(g,g.value(me,SH.predicate))
     frag = """?this %(path1)s ?value1 . ?this %(path2)s ?value2 .
 		FILTER ( ! (?value1 < ?value2) )""" % \
             { "path1":pathS(path1), "path2":pathS(path2) }
@@ -481,7 +481,7 @@ def lessThanCompatabilityC(g,value,me,context) :		# fragpat GroupGraphPattern pi
                     
 def lessThanOrEqualsCompatabilityC(g,value,me,context) :	# fragpat GroupGraphPattern pieces
     path1 = pathtoSPARQL(g,value)
-    path2 = pathtoSPARQL(g,g.value(me,sh:predicate))
+    path2 = pathtoSPARQL(g,g.value(me,SH.predicate))
     frag = """?this %(path1)s ?value1 . ?this %(path2)s ?value2 .
 		FILTER ( ! (?value1 <= ?value2) )""" % \
             { "path1":pathS(path1), "path2":pathS(path2) }
@@ -511,7 +511,7 @@ compatabilityConstructs = { 'constraint':constraintC, 'property':propertyC,
                             'closedC':closedCompatabilityC,
                             'equalsC':equalsCompatabilityC,
                             'disjointC':disjointCompatabilityC,
-                            'lessThanC':lessThanCompatabilityC
+                            'lessThanC':lessThanCompatabilityC,
                             'lessThanOrEqualsC':lessThanOrEqualsCompatabilityC
 			}
 
