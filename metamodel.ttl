@@ -421,9 +421,10 @@ sh:maxExclusive a sh:ComponentTemplate ;
 sh:nodeKind a sh:ComponentTemplate ; 
   sh:templateMessage "Not of correct kind [argument]"@en ;
   sh:message "Has to be sh:BlankNode, sh:IRI, or sh:Literal"@en ;
-  sh:templateFilter """((isIRI(?this) && ([argument] = sh:IRI || [argument] = sh:BlankNodeOrIRI || [argument] = sh:IRIOrLiteral)) ||
-         (isLiteral(?this) && ([argument] = sh:Literal || [argument] = sh:BlankNodeOrLiteral || [argument] = sh:IRIOrLiteral)) ||
- 	 (isBlank(?this) && ([argument] = sh:BlankNode || [argument] = sh:BlankNodeOrLiteral || [argument] = sh:BlankNodeOrLiteral)))""" .
+  sh:templateFilter
+  """((isIRI(?this) && [argument] IN (sh:IRI, sh:BlankNodeOrIRI, sh:IRIOrLiteral) ) ||
+      (isLiteral(?this) && [argument] IN ( sh:Literal, sh:BlankNodeOrLiteral, sh:IRIOrLiteral)) ||
+      (isBlank(?this) && [argument] IN ( sh:BlankNode, sh:BlankNodeOrLiteral, sh:BlankNodeOrLiteral)))""" .
 
 sh:pattern a sh:ComponentTemplate ; 
   sh:propValues ( rdf:first [ a sh:Shape ; sh:argumentName "pattern" ] ) ;
