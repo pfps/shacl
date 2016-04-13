@@ -82,18 +82,6 @@ def listTurtle(g,head) :
 
 ## utility functions to create code
 
-def fragmentPattern(g,code,message,context) :	# SubSelect <- GroupGraphPattern pieces
-    body = """# FRAGMENT 
-  SELECT [projection] ?this ([message] AS ?message) ([severity] AS ?severity) (?this AS ?object)
-  WHERE { [outer] [inner]
-          [code] }"""
-    result = substitute(body,g,context, code=code, message='"'+message+'"')
-    return result
-
-def fragment(g,code,message,context) : 		# SubSelect <- PrimaryExpression
-    filter = """FILTER ( ! %(code)s )""" % { "code":code }
-    return fragmentPattern(g,filter,message,context)
-
 def parttoSPARQL(g,part) :
     result =  ("^"+g.value(part,SH.inverse).n3()) \
               if (part,SH.inverse,None) in g else part.n3()
@@ -110,103 +98,115 @@ def pathtoSPARQL(g,value) :
         return Literal(parttoSPARQL(g,value))
     else : return value
 
+def fragmentPattern(g,code,message,component,context) :	# SubSelect <- GroupGraphPattern pieces
+    body = """  SELECT [projection] ?this (?this AS ?subject) # FRAGMENT
+         ([severity] AS ?severity) ([component] AS ?component) ([message] AS ?message) 
+  WHERE { [outer] [inner]
+          [code] }"""
+    result = substitute(body,g,context, code=code, message='"'+message+'"', component=component)
+    return result
+
+def fragment(g,code,message,component,context) : 		# SubSelect <- PrimaryExpression
+    filter = """FILTER ( ! %(code)s )""" % { "code":code }
+    return fragmentPattern(g,filter,message,component,context)
+
 ### implementations of components
 
 def inC(g,value,context) :			# fragment PrimaryExpression 
     frag = "EXISTS { VALUES ?this { %s } }" % " ".join(listTurtle(g,value))
-    return fragment(g,frag, "Not any required value",context)
+    return fragment(g,frag, "Not any required value",SH['in'],context)
 
 def classC(g,value,context) :			# fragment PrimaryExpression
     frag = "EXISTS { ?this rdf:type/rdfs:subClassOf* %s }" % value.n3()
-    return fragment(g,frag, "Does not have required class %s" % curieS(g,value), context)
+    return fragment(g,frag, "Does not have required class %s" % curieS(g,value),SH['class'],context)
 
 def classInC(g,value,context) :			# fragment PrimaryExpression
     frag = """EXISTS { VALUES ?class { %s } 
       ?this rdf:type/rdfs:subClassOf* ?class . }""" % " ".join(listTurtle(g,value))
-    return fragment(g,frag, "Does not have any required class", context)
+    return fragment(g,frag, "Does not have any required class", SH.classIn, context)
 
 def datatypeC(g,value,context) :		# fragment PrimaryExpression
     frag = "(isLiteral(?this) && datatype(?this) = %s)" % value.n3()
-    return fragment(g,frag,"Does not have required datatype %s"%curieS(g,value), context)
+    return fragment(g,frag,"Does not have required datatype %s"%curieS(g,value), SH.datatype, context)
 
 def datatypeInC(g,value,context) :  		# fragPat GroupGraphPattern piece
     frag = """BIND ( datatype(?this) AS ?dt ) 
               FILTER NOT EXISTS { VALUES ?dt { %s } }""" % " ".join(listTurtle(g,value))
-    return fragmentPattern(g,frag, "Not any required value",context)
+    return fragmentPattern(g,frag, "Not any required value",SH.datatypeIn, context)
 
 def directTypeC(g,value,context) : 		# fragment PrimaryExpression
     frag = "EXISTS { ?this rdf:type %s }" % value.n3()
-    return fragment(g,frag, "Does not have required type %s" % curieS(g,value), context)
+    return fragment(g,frag, "Does not have required type %s" % curieS(g,value), SH.directtype, context)
 
 def minLengthC(g,value,context) :		# fragment PrimaryExpression
     frag = "(!isBlank(?this) && STRLEN(STR(?this)) >= %s)" % value
-    return fragment(g,frag, "Length too short, must be at least %s" % value, context)
+    return fragment(g,frag, "Length too short, must be at least %s" % value, SH.minLength, context)
 
 def maxLengthC(g,value,context) :		# fragment PrimaryExpression
     frag = "(!isBlank(?this) && STRLEN(STR(?this)) <= %s)" % value
-    return fragment(g,frag, "Length too long, must be at most %s" % value, context)
+    return fragment(g,frag, "Length too long, must be at most %s" % value, SH.maxLength, context)
 
 def minInclusiveC(g,value,context) :		# fragment PrimaryExpression
     frag = "COALESCE(?this >= %s,false)" % value
-    return fragment(g,frag, "Too small, must be at least %s" % value, context)
+    return fragment(g,frag, "Too small, must be at least %s" % value, SH.minInclusive, context)
 
 def minExclusiveC(g,value,context) :		# fragment PrimaryExpression
     frag = "COALESCE(?this > %s,false)" % value
-    return fragment(g,frag, "Too small, must be greater than %s" % value, context)
+    return fragment(g,frag, "Too small, must be greater than %s" % value, SH.minExclusive, context)
 
 def maxInclusiveC(g,value,context) :		# fragment PrimaryExpression
     frag = "COALESCE(?this <= %s,false)" % value
-    return fragment(g,frag, "Too big, must be at most %s" % value, context)
+    return fragment(g,frag, "Too big, must be at most %s" % value, SH.maxInclusive, context)
 
 def maxExclusiveC(g,value,context) :		# fragment PrimaryExpression
     frag = "COALESCE(?this < %s,false)" % value
-    return fragment(g,frag, "Too big, must be less than %s" % value, context)
+    return fragment(g,frag, "Too big, must be less than %s" % value, SH.maxExclusive, context)
 
 def nodeKindC(g,value,context) :		# fragment PrimaryExpression
     if value == SH.BlankNode :
-        return fragment(g,"isBlank(?this)","Not blank", context)
+        return fragment(g,"isBlank(?this)","Not blank", SH.nodeKind, context)
     if value == SH.IRI :
-        return fragment(g,"isIRI(?this)","Not IRI", context)
+        return fragment(g,"isIRI(?this)","Not IRI", SH.nodeKind, context)
     if value == SH.Literal :
-        return fragment(g,"isLiteral(?this)", "Not literal", context)
+        return fragment(g,"isLiteral(?this)", "Not literal", SH.nodeKind, context)
     if value == SH.BlankNodeOrIRI :
         return fragment(g,"(isBlank(?this)||isIRI(?this))", 
-                        "Not IRI or blank", context)
+                        "Not IRI or blank", SH.nodeKind, context)
     if value == SH.BlankNodeOrLiteral :
         return fragment(g,"(isBlank(?this)||isLiteral(?this))", 
-                        "Not literal or blank", context)
+                        "Not literal or blank", SH.nodeKind, context)
     if value == SH.IRIOrLiteral :
         return fragment(g,"(isIRI(?this)||isLiteral(?this))", 
-                        "Not IRI or literal", context)
+                        "Not IRI or literal", SH.nodeKind, context)
 
-def patternConstruct(g,pattern,flags,context) :	# fragment PrimaryExpression
+def patternConstruct(g,pattern,flags,component,context) :	# fragment PrimaryExpression
     frag = """(!isBlank(?this) && REGEX(STR(?this),"%(pattern)s","%(flags)s"))""" % \
            {"pattern":pattern,"flags":flags}
-    return fragment(g,frag,"Does not match regular expression", context)
+    return fragment(g,frag,"Does not match regular expression", component, context)
 
 def patternC(g,value,context) :			# fragment PrimaryExpression
     if isinstance(value,rdflib.term.Literal) :
-        return patternConstruct(g,value,"",context)
+        return patternConstruct(g,value,"",SH.pattern,context)
     else :
         pattern = g.value(value,RDF.first)
         flags = g.value(g.value(value,RDF.rest),RDF.first)
-        return patternConstruct(g,pattern,flags,context)
+        return patternConstruct(g,pattern,flags,SH.pattern,context)
 
-### these don't currently set predicate and object, should they??
+### these don't currently set predicate and subject, should they??
 def equalsC(g,value,context) :			# fragPat GroupGraphPattern
     path1 = pathtoSPARQL(g,g.value(value,RDF.first))
     path2 = pathtoSPARQL(g,g.value(g.value(value,RDF.rest),RDF.first))
     frag = """{ { ?this %(path1)s ?value . MINUS { ?this %(path2)s ?value . } } UNION 
          { ?this %(path2)s ?value . MINUS { ?this %(path1)s ?value.  } } }""" % \
         { "path1":pathS(path1), "path2":pathS(path2) }
-    return fragmentPattern(g,frag,"Paths don't have equal values", context)
+    return fragmentPattern(g,frag,"Paths don't have equal values",SH.equals,context)
 
 def disjointC(g,value,context) :		# fragpat GroupGraphPattern piece
     path1 = pathtoSPARQL(g,g.value(value,RDF.first))
     path2 = pathtoSPARQL(g,g.value(g.value(value,RDF.rest),RDF.first))
     frag = """?this %(path1)s ?value1 . ?this %(path2)s ?value1 .""" % \
         { "path1":pathS(path1), "path2":pathS(path2) }
-    return fragmentPattern(g,frag,"Paths share a value", context)
+    return fragmentPattern(g,frag,"Paths share a value",SH.disjoint,context)
                     
 def lessThanC(g,value,context) :		# fragpat GroupGraphPattern pieces
     path1 = pathtoSPARQL(g,g.value(value,RDF.first))
@@ -214,7 +214,7 @@ def lessThanC(g,value,context) :		# fragpat GroupGraphPattern pieces
     frag = """?this %(path1)s ?value1 . ?this %(path2)s ?value2 .
 		FILTER ( ! (?value1 < ?value2) )""" % \
             { "path1":pathS(path1), "path2":pathS(path2) }
-    return fragmentPattern(g,frag,"Second path value too small", context)
+    return fragmentPattern(g,frag,"Second path value too small",SH.lessThan,context)
                     
 def lessThanOrEqualsC(g,value,context) :	# fragpat GroupGraphPattern pieces
     path1 = pathtoSPARQL(g,g.value(value,RDF.first))
@@ -222,14 +222,14 @@ def lessThanOrEqualsC(g,value,context) :	# fragpat GroupGraphPattern pieces
     frag = """?this %(path1)s ?value1 . ?this %(path2)s ?value2 .
 		FILTER ( ! (?value1 <= ?value2) )""" % \
             { "path1":pathS(path1), "path2":pathS(path2) }
-    return fragmentPattern(g,frag,"Second path value too small", context)
+    return fragmentPattern(g,frag,"Second path value too small",SH.lessThanOrEqual,context)
 
 def listC(g,value,context) :			# SubSelect
     elementCheck = newContext(g,Literal("rdf:rest*/rdf:first"),
-                              "For list element", value,context) 
+                              "For list element", value, SH.list, context) 
     result = """# LIST
-  SELECT [projection] ?this ?message ([severity] AS ?severity)
-         ?subject ?predicate ?object
+  SELECT [projection] ?this ?subject ?predicate ?object 
+	([severity] AS ?severity) ?message ([component] AS ?component)
   WHERE { [outer] [inner]
           { FILTER NOT EXISTS { ?this rdf:rest* rdf:nil .}
             BIND ( "List does not terminate at rdf:nil" AS ?message )
@@ -248,51 +248,55 @@ def listC(g,value,context) :			# SubSelect
             BIND ( "rdf:nil has rdf:first or rdf:rest" AS ?message )
             BIND ( ?this AS ?subject )
          } UNION { [elementCheck] } }""" 
-    return substitute(result,g,context,elementCheck=elementCheck)
+    return substitute(result,g,context,elementCheck=elementCheck,component=SH.list)
 
 def hasValueC(g,value,context) :		# SubSelect
     body = """# hasValue
-  SELECT [projection] ([message] AS ?message) ([severity] AS ?severity)
+  SELECT [projection] ([message] AS ?message) ([severity] AS ?severity) ([component] AS ?component)
   WHERE { [outer] 
           FILTER NOT EXISTS { [inner] FILTER sameTerm(?this,[value]) } }""" 
-    return substitute(body,g,context,value=value,
+    return substitute(body,g,context,value=value,component=SH.hasValue,
                       message='"Missing required value %s"' % curieS(g,value))
 
 def uniqueLangC(g,value,context) :		# SubSelect
     if value == true :
         body = """# uniquelang
-  SELECT [projection] ([message] AS ?message) ([severity] AS ?severity)
+  SELECT [projection] ([message] AS ?message) ([severity] AS ?severity) ([component] AS ?component)
   WHERE { [outer] [inner]
           BIND (lang(?this) AS ?lang)
           FILTER (isLiteral(?this) && bound(?lang) && ?lang != "") }
   GROUP BY [projection] ?lang  HAVING ( COUNT(?this) > 1 )"""
-	return substitute(body,g,context,message='"Values share a language tag"')
+	return substitute(body,g,context,message='"Values share a language tag"',component=SH.uniqueLang)
     else : return universalShape
 
 def minCountC(g,value,context) :		# SubSelect
     body = """# minCount
-  SELECT [projection] ([message] AS ?message) ([severity] AS ?severity)
+  SELECT [projection] ([message] AS ?message) ([severity] AS ?severity) ([component] AS ?component)
   WHERE { [outer] OPTIONAL { [inner] } }
   [group] HAVING ( COUNT (DISTINCT ?this) < [value] )"""
-    return substitute(body,g,context,value=value,
+    return substitute(body,g,context,value=value,component=SH.minCount,
                       message='"Too few values, need at least %s"' % value)
 
 def maxCountC(g,value,context) :		# SubSelect
     body = """# maxCount
-  SELECT [projection] ([message] AS ?message) ([severity] AS ?severity)
+  SELECT [projection] ([message] AS ?message) ([severity] AS ?severity) ([component] AS ?component)
   WHERE { [outer] OPTIONAL { [inner] } }
   [group] HAVING ( COUNT (DISTINCT ?this) > [value] )"""
-    return substitute(body,g,context,value=value,
+    return substitute(body,g,context,value=value,component=SH.maxCount,
                       message=u'"Too many values, want at most %s"' % value)
 
 def shapeC(g,value,context) :			# SubSelect
     child = processShape(g,value,context)
-    return """# COMPONENT shape\n%(child)s""" % { "child":child }
+    result = """  SELECT [projection] ?this ?subject ?property ?object #SHAPE
+	?severity ([component] AS ?component) ?message
+  WHERE { [child] }"""
+    return substitute(result,g,context,child=child,component=SH.shape)
 
 # uses severity at least this severity, not Violation
 def notC(g,value,context) :			# SubSelect
     child = processShape(g,value,context)
-    result = """  SELECT [projection] ?this ?message ?severity ?subject ?property ?object
+    result = """  SELECT [projection] ?this ?subject ?property ?object
+	?severity ([component] as ?component) ?message 
   WHERE { [outer] [inner]
           BIND ( "Fails to validate against negated shape" AS ?message )
           BIND ( [severity] AS ?severity ) 
@@ -301,7 +305,7 @@ def notC(g,value,context) :			# SubSelect
             WHERE { { [child] } 
                     FILTER ( ?severity IN ( [severe] ) ) 
                   } } }"""
-    return substitute(result,g,context,child=child, severe=moreSevere(context) )
+    return substitute(result,g,context,child=child, component=SH['not'], severe=moreSevere(context) )
 
 def andC(g,value,context) :			# SubSelect
     children = [ processShape(g,child,context)
@@ -309,35 +313,35 @@ def andC(g,value,context) :			# SubSelect
     childs = "{ " + "\n } UNION {\n".join(children) + "\n }" \
              if len(children)>0 else ""
     result = """# COMPONENT and
-  SELECT [projection] ?this ?message ?severity ?subject ?property ?object
+  SELECT [projection] ?this ?subject ?property ?object ?severity ([component] AS ?component) ?message
   WHERE { [childs] }"""
-    return substitute(result,g,context,childs=childs)
+    return substitute(result,g,context,component=SH['and'],childs=childs)
 
 # how should severity be handled?
 def orC(g,value,context) :			# SubSelect
     children = [ processShape(g,child,context)
                  for child in listElements(g,value) ]
     if len(children) == 0 :
-        result="""SELECT [projection] ?this ?subject ?predicate ?object ?message ?severity
-    WHERE { VALUES ( ?this ?subject ?predicate ?object ?message ?severity )
-               { ( UNDEF UNDEF UNDEF UNDEF "Empty or" [severity] ) } }""" 
-        return substitute(result,g,context)
+        result="""SELECT [projection] ?this ?subject ?predicate ?object ?severity ?component ?message
+    WHERE { VALUES ( ?this ?subject ?predicate ?object ?message ?component ?severity )
+               { ( UNDEF UNDEF UNDEF UNDEF "Empty or" [component] [severity] ) } }""" 
+        return substitute(result,g,context,component=SH['or'])
     elif len(children) == 1 :
-        return children[0]
+        return children[0] # FIX???
     else :
         childs = [ """{ SELECT %(projection)s ?this WHERE { %(child)s } }""" % \
                    { "projection":context["projection"], "child":child }
                    for child in itertools.islice(children,1,None) ]
-        result="""SELECT [projection] ?this ?message ?severity ?subject ?predicate ?object
-    WHERE { { [first] } [childs] }"""
-        return substitute(result,g,context, first=children[0], childs=" ".join(childs))
+        result="""SELECT [projection] ?this ?subject ?predicate ?object ?severity ([component] AS ?component) ?message
+    WHERE { [childs] { [first] }  }"""
+        return substitute(result,g,context, first=children[0], component=SH['or'], childs=" ".join(childs))
 
 def closedC(g,value,context) :			# fragment PrimaryExpression
     paths = [ parttoSPARQL(g,element)
                    for element in listElements(g,value) ]
     closed = "!(" + "|".join(paths) + ")"
     frag = """( ! EXISTS { ?this %(closed)s ?value } )""" % { "closed":closed }
-    return fragment(g,frag,"Value found for disallowed property", context)
+    return fragment(g,frag,"Value found for disallowed property", SH.closed, context)
 
 def partitionC(g,value,context) :		# SubSelect
     children =  listElements(g,value)
@@ -357,9 +361,9 @@ def partitionC(g,value,context) :		# SubSelect
     bodies.append(final)
     bodys = "{ " + "\n } UNION {\n".join(bodies) + "\n }"
     result = """ # PARTITION
-  SELECT [projection] ?this ?message ?severity ?subject ?property ?object
+  SELECT [projection] ?this ?subject ?property ?object ?severity ([component] AS ?component) ?message
   WHERE { [bodys] }   """
-    return substitute(result,g,context,bodys=bodys)
+    return substitute(result,g,context,component=SH['partition'],bodys=bodys)
 
 def queryC(g,value,context) :			# SubSelect
     return " { " + value + " } "
@@ -368,15 +372,15 @@ def constructShape(g,shape,components,context) :	# SubSelect <- SubSelects
     if ( len(components) > 0 ) :
         body = "{ " + " } UNION { ".join(components) + " }"
         result = """# SHAPE start [shape]
-  SELECT [projection] ?this ?message ?severity 
-         ?subject ?predicate ?object ([shape] AS ?shape )
+  SELECT [projection] ?this ?subject ?predicate ?object 
+	?severity ?component ([shape] AS ?shape) ?message 
   WHERE # SHAPE body\n { [body]
         } # SHAPE end [shape]\n""" 
         return substitute(result,g,context, shape=shape, body=body)
     else: return universalShape
 
 # set up a new context that is the values of a path from the current context
-def newContext(g,path,message,childShape,context) : # SubSelect
+def newContext(g,path,message,childShape,component,context) : # SubSelect
     childouter = """{ SELECT (IF(BOUND(?p),?p,"UNKNOWN P") AS ?parent) (IF(BOUND(?gp),?gp,"UNKNOWN GP") AS ?grandparent)
 	WHERE { { SELECT (IF(BOUND(?this),?this,"UNK T") AS ?p) (IF(BOUND(?parent),?parent,"UNK P") AS ?gp) WHERE { %(inner)s } }
 	} }""" % { "inner":context["inner"] }
@@ -385,7 +389,7 @@ def newContext(g,path,message,childShape,context) : # SubSelect
                       group="GROUP BY ?parent",inner=childinner)
     child = processShape(g,childShape,childcontext)
     result ="""# newContext
-  SELECT [projection] ?this ?message ?severity ?subject ?predicate ?object
+  SELECT [projection] ?this ?subject ?predicate ?object ?severity ([component] AS ?component) ?message
   WHERE { 
    {SELECT (?childGrandparent AS ?parent) ?this # (?childParent AS ?this)
            ?message ?severity ?subject ?predicate ?object
@@ -395,8 +399,9 @@ def newContext(g,path,message,childShape,context) : # SubSelect
                (?subject AS ?childSubject) (?predicate AS ?childPredicate) ?object
         WHERE {     [child]
               } }
-      BIND( (IF(BOUND(?childSubject), ?childSubject, ?childParent)) AS ?subject )
-      BIND( (IF(BOUND(?childSubject), ?childPredicate, [path])) AS ?predicate )
+      BIND( (IF(BOUND(?childPredicate), ?childSubject, ?childParent)) AS ?subject )
+      BIND( (IF(BOUND(?childPredicate), ?childPredicate, [path])) AS ?predicate )
+      BIND( (IF(BOUND(?childPredicate), ?childObject, ?childSubject)) AS ?object )
       BIND( (IF(BOUND(?childParent), ?childParent, "UNKNOWN")) AS ?this )
       BIND( CONCAT([message],?childMessage) AS ?message )
       BIND( [severity] AS ?severity ) 
@@ -404,12 +409,12 @@ def newContext(g,path,message,childShape,context) : # SubSelect
       [inner] # subshape inner
       }"""
     return substitute(result,g,context,message='"'+message+'"',child=child,
-                      path=curie(g,path) )
+                      component=component, path=curie(g,path) )
 
 def propValuesC(g,value,context) :		# SubSelect
     path = pathtoSPARQL(g,g.value(value,RDF.first))
     childShape = g.value(g.value(value,RDF.rest),RDF.first)
-    return newContext(g,path,"In path %s "% curieS(g,path),childShape, context)
+    return newContext(g,path,"In path %s "% curieS(g,path),childShape,SH.propValues,context)
 
 # compatability constructs - not tested 
 def constraintC(g,value,me,context) :
@@ -417,32 +422,32 @@ def constraintC(g,value,me,context) :
 
 def propertyC(g,value,me,context) :
     property = g.value(value,SH.predicate).n3()
-    return newContext(g,property,"In path %s " % path.n3(),value, context)
+    return newContext(g,property,"In path %s " % path.n3(),value, SH.property, context)
 
 def inversePropertyC(g,value,me,context) :
     property = "^" + g.value(value,SH.predicate).n3()
-    return newContext(g,property,"In path %s " % path.n3(),value, context)
+    return newContext(g,property,"In path %s " % path.n3(),value, SH.inverseProperty,context)
 
 def qualifiedValueShapeC(g,value,me,context) :
     filter = processShape(g,shape,parentcontext) 
     inner = "{ " + inner + "\n } MINUS { # FILTER\n" + filter + "\n }"
     min = g.value(me,SH.qualifiedMinCount,None)
-    minComponent = minCountC(g,min,context) \
+    minCompnt = minCountC(g,min,context) \
                    if min is not None else None
     max = g.value(me,SH.qualifiedMaxCount,None)
-    maxComponent = maxCountC(g,max,context) \
+    maxCompnt = maxCountC(g,max,context) \
                    if max is not None else None
-    component = ( " { " + minComponent + " } UNION { " + maxComponent + " } " \
-                  if min is not None else maxComponent ) \
+    compnt = ( " { " + minCompnt + " } UNION { " + maxCompnt + " } " \
+                  if min is not None else maxCompnt ) \
                      if max is not None \
-                     else minComponent if min is not None else None
-    if component is not None :
-        return constructShape(g,shape,[component],projection)
+                     else minCompnt if min is not None else None
+    if compnt is not None :
+        return constructShape(g,shape,[compnt],projection)
     else: return universalShape
 
 def patternCompatibilityC(g,value,me,context) :
     flags = g.value(me,SH.flags,"")
-    return patternConstruct(g,pattern,flags,context)
+    return patternConstruct(g,pattern,flags,SH.patternC,context)
 
 def closedCompatabilityC(g,value,me,context) :
     ignored = listTurtle(g,g.value(me,SH.flags,""))
@@ -453,7 +458,7 @@ def closedCompatabilityC(g,value,me,context) :
     properties = ignored + properties + inverses
     closed = "!(" + "|".join(ignored + properties + inverses) + ")"
     frag = """( ! EXISTS ( ?this %(closed) ?value ) )""" % { "closed":closed }
-    return fragment(g,frag,"Value found for disallowed property", context)
+    return fragment(g,frag,"Value found for disallowed property", SH.closedC, context)
 
 ### these don't currently set predicate and object, should they??
 def equalsCompatabilityC(g,value,me,context) :			# fragPat GroupGraphPattern
@@ -462,14 +467,14 @@ def equalsCompatabilityC(g,value,me,context) :			# fragPat GroupGraphPattern
     frag = """{ { ?this %(path1)s ?value . MINUS { ?this %(path2)s ?value . } } UNION 
          { ?this %(path2)s ?value . MINUS { ?this %(path1)s ?value.  } } }""" % \
         { "path1":pathS(path1), "path2":pathS(path2) }
-    return fragmentPattern(g,frag,"Paths don't have equal values", context)
+    return fragmentPattern(g,frag,"Paths don't have equal values", SH.equalsC, context)
 
 def disjointCompatabilityC(g,value,me,context) :		# fragpat GroupGraphPattern piece
     path1 = pathtoSPARQL(g,value)
     path2 = pathtoSPARQL(g,g.value(me,SH.predicate))
     frag = """?this %(path1)s ?value1 . ?this %(path2)s ?value1 .""" % \
         { "path1":pathS(path1), "path2":pathS(path2) }
-    return fragmentPattern(g,frag,"Paths share a value", context)
+    return fragmentPattern(g,frag,"Paths share a value", SH.disjointC, context)
                     
 def lessThanCompatabilityC(g,value,me,context) :		# fragpat GroupGraphPattern pieces
     path1 = pathtoSPARQL(g,value)
@@ -477,7 +482,7 @@ def lessThanCompatabilityC(g,value,me,context) :		# fragpat GroupGraphPattern pi
     frag = """?this %(path1)s ?value1 . ?this %(path2)s ?value2 .
 		FILTER ( ! (?value1 < ?value2) )""" % \
             { "path1":pathS(path1), "path2":pathS(path2) }
-    return fragmentPattern(g,frag,"Second path value too small", context)
+    return fragmentPattern(g,frag,"Second path value too small", SH.lessThanC, context)
                     
 def lessThanOrEqualsCompatabilityC(g,value,me,context) :	# fragpat GroupGraphPattern pieces
     path1 = pathtoSPARQL(g,value)
@@ -485,7 +490,7 @@ def lessThanOrEqualsCompatabilityC(g,value,me,context) :	# fragpat GroupGraphPat
     frag = """?this %(path1)s ?value1 . ?this %(path2)s ?value2 .
 		FILTER ( ! (?value1 <= ?value2) )""" % \
             { "path1":pathS(path1), "path2":pathS(path2) }
-    return fragmentPattern(g,frag,"Second path value too small", context)
+    return fragmentPattern(g,frag,"Second path value too small", SH.lessThanOrEqualsC, context)
 
 ## control of SPARQL query construction
 
@@ -592,17 +597,6 @@ def processShapeInternal(g,shape,context,exclusions=[],compatability=False) :
         for comValue in g.objects(shape,SH[name]) :
             components.append(function(g,comValue,context))
     return constructShape(g,shape,components,context),filters
-
-def constructShape(g,shape,components,context) :
-    if ( len(components) > 0 ) :
-        body = "{ " + " } UNION { ".join(components) + " }"
-        result = """# SHAPE start [shape]
-  SELECT [projection] ?this ?message ?severity 
-         ?subject ?predicate ?object ([shape] AS ?shape )
-  WHERE { # SHAPE body\n  [body]
-        } # SHAPE end [shape]\n""" 
-        return substitute(result,g,context, shape=shape, body=body)
-    else: return universalShape
 
 
 ## published interface
