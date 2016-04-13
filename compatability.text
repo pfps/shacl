@@ -117,9 +117,9 @@ sh:focusNode			validation property		this		built-in
 sh:subject			validation property		subject		built-in
 sh:predicate			validation property		predicate	built-in
 sh:object			validation property		object		built-in
-sh:sourceConstraint		validation property		not implemented EASY
+sh:sourceConstraint		validation property		not needed	not needed
 sh:sourceShape			validation property		not implemented EASY
-sh:sourceTemplate		validation property		not implemented EASY
+sh:sourceTemplate		validation property		sh:sourceComponent TO DO - EASY
 sh:detail			validation property		not implemented	NO
 sh:message			validation property		message		built-in
 sh:severity			validation property		severity	built-in
