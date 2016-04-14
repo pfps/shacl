@@ -97,7 +97,6 @@ def process(g,parse,context,listp=False) :
         elif parse[0] == 'c' :
             p = process(g,parse[1],context)[0]
             l = fetch(g,parse[2],context,listp)
-#            print ("SUB",context)
             return [ newContext(g,p,'"In path %s "'%p,e,context) for e in l ]
 
 def substitut(string,g,context,**kwargs) :
@@ -221,7 +220,6 @@ def pathtoSPARQL(g,value) :
 
 # set up a new context that is the values of a path from the current context
 def newContext(g,path,message,childShape,context) :
-    print("NEWCONTEXT",path,context)
     childouter = """{ SELECT (?p AS ?parent) (?gp AS ?grandparent)
 	WHERE { { SELECT (?this AS ?p) (?parent AS ?gp) WHERE { %(inner)s } }
 	} }""" % { "inner":context["inner"] }
@@ -322,7 +320,6 @@ def processShape(g,shape,context) :
     assert metamodel is not None
     for template in metamodel.subjects(RDF.type,SH.ComponentTemplate) :
         for value in g.objects(shape,template) :
-#            print("SHAPE CONTEXT",context)
             components.append( constructTemplate(g,template,value,context) )
     return constructShape(g,shape,components,context)
 
@@ -330,7 +327,6 @@ def constructTemplate(g,template,argument,context) :
     context = dict(context) # copy the context to make changes to it
     context["argument"] = argument # add argument value to context
     context["component"] = template # add template as component
-#    print("TEMPLATE",argument,template,context)
     for argComponent in metamodel.objects(template,SH.propValues) : # look for arguments
         argPath = pathtoSPARQL(metamodel,metamodel.value(argComponent,RDF.first))
         argShape = metamodel.value(metamodel.value(argComponent,RDF.rest),RDF.first)
@@ -352,7 +348,6 @@ def constructTemplate(g,template,argument,context) :
     else :
         query = metamodel.value(template,SH.templateQuery)
         if query is not None :
-#            print("TEMPLATE CONTEXT",context)
             return substitut(query,g,context)
     print( "TEMPLATE HAS NO CODE",template)
     return ""
@@ -364,7 +359,7 @@ def setupMetamodel(meta="./metamodel.ttl") :
 
 # process a single shape
 def validateShape(dataGraph,shape,shapesGraph,printShapes=False) :
-    if printShapes : print( "SHAPE NAME ", shape)
+    if printShapes : print( "Validating shape", shape)
     shape = processShapeInvocation(shapesGraph,shape,printShapes)
 #    if printShapes : print( "SHAPE SHAPE", shape)
     if shape is not None : return dataGraph.query(shape)
@@ -391,18 +386,26 @@ def qname(node,graph) :
   else : return node.n3(graph.namespace_manager)
 
 def printResult(result,graph) :
-      try : print( "SH",qname(result.shape,graph), end=" ")
+      try : print ( "PARENT",qname(result.parent,graph), end=" " )
       except AttributeError : None
-      try : print( "THIS",qname(result.this,graph), end=" ")
+      try : print ( "THIS",qname(result.this,graph), end=" " )
       except AttributeError : None
-      try : print( "S",qname(result.subject,graph), end=" ")
+      try : print ( "SE",qname(result.severity,graph), end=" " )
       except AttributeError : None
-      try : print( "P",qname(result.predicate,graph), end=" ")
+      try : print ( "SH",qname(result.shape,graph), end=" " )
       except AttributeError : None
-      try : print( "O",qname(result.object,graph), end=" ")
+      try : print ( "C",qname(result.component,graph), end=" " )
       except AttributeError : None
-      try : print( "MESSAGE",qname(result.message,graph), end=" ")
+      try : print ( "PS",qname(result.PS,graph), end=" " )
       except AttributeError : None
-      try : print( "SEV",qname(result.severity,graph), end=" ")
+      try : print ( "CS",qname(result.CS,graph), end=" " )
       except AttributeError : None
-      print ("")
+      try : print ( "S",qname(result.subject,graph), end=" " )
+      except AttributeError : None
+      try : print ( "P",qname(result.predicate,graph), end=" " )
+      except AttributeError : None
+      try : print ( "O",qname(result.object,graph), end=" " )
+      except AttributeError : None
+      try : print ( "MESSAGE",qname(result.message,graph), end=" " )
+      except AttributeError : None
+      print ( "" )
