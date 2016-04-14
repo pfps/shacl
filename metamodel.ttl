@@ -223,11 +223,6 @@ sh:lessThanOrEquals a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:ra
 shmm:lessThanOrEqualsShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:lessThanOrEquals sh:lessThanOrEquals ) .
 
-sh:list a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range sh:Shape ;
-  sh:class sh:Shape .
-shmm:listShape a sh:Shape ; sh:scopeClass sh:Shape ;
-  sh:propValues ( sh:list sh:list ) .
-
 sh:hasValue a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ;
   sh:shape shmm:notBlank .
 shmm:hasValueShape a sh:Shape ; sh:scopeClass sh:Shape ;
@@ -250,6 +245,16 @@ sh:maxCount a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range xsd:
 shmm:maxCountShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:maxCount sh:maxCount ) .
 
+sh:closed a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+  sh:list [ a sh:Shape ; sh:or ( [ a sh:Shape ; sh:nodeKind sh:IRI ] shmm:inverseShape ) ] .
+shmm:closedShape a sh:Shape ; sh:scopeClass sh:Shape ;
+  sh:propValues ( sh:closed sh:closed ) .
+
+sh:list a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range sh:Shape ;
+  sh:class sh:Shape .
+shmm:listShape a sh:Shape ; sh:scopeClass sh:Shape ;
+  sh:propValues ( sh:list sh:list ) .
+
 sh:shape a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range sh:Shape ;
   sh:class sh:Shape .
 shmm:shapeShape a sh:Shape ; sh:scopeClass sh:Shape ;
@@ -270,6 +275,11 @@ sh:or a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
 shmm:orShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:or sh:or ) .
 
+sh:partition a rdf:Property ; a sh:Shape ;  rdfs:domain sh:Shape ; rdfs:range rdf:List ;
+  sh:list [ a sh:Shape ; sh:class sh:Shape ] .
+shmm:partitionShape a sh:Shape ; sh:scopeClass sh:Shape ;
+  sh:propValues ( sh:partition sh:partition ) .
+
 sh:propValues a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
   sh:list [ a sh:Shape ] ;
   sh:propValues ( ( rdf:rest rdf:rest ) [ a sh:Shape ; sh:hasValue rdf:nil ] ) ;
@@ -277,16 +287,6 @@ sh:propValues a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rd
   sh:propValues ( ( rdf:rest rdf:first ) [ a sh:Shape ; sh:class sh:Shape ] ) .
 shmm:propValuesShape a sh:Shape ; sh:scopeClass sh:Shape ;
   sh:propValues ( sh:propValues sh:propValues ) .
-
-sh:partition a rdf:Property ; a sh:Shape ;  rdfs:domain sh:Shape ; rdfs:range rdf:List ;
-  sh:list [ a sh:Shape ; sh:class sh:Shape ] .
-shmm:partitionShape a sh:Shape ; sh:scopeClass sh:Shape ;
-  sh:propValues ( sh:partition sh:partition ) .
-
-sh:closed a rdf:Property ; a sh:Shape ; rdfs:domain sh:Shape ; rdfs:range rdf:List ;
-  sh:list [ a sh:Shape ; sh:or ( [ a sh:Shape ; sh:nodeKind sh:IRI ] shmm:inverseShape ) ] .
-shmm:closedShape a sh:Shape ; sh:scopeClass sh:Shape ;
-  sh:propValues ( sh:closed sh:closed ) .
 
 
 ## PART 3: Extension Language
@@ -471,36 +471,6 @@ sh:lessThanOrEquals a sh:ComponentTemplate ;
   sh:templatePattern """?this [p(path1)] ?value1 . ?this [p(path2)] ?value2 .
         FILTER ( ! (?value1 <= ?value2) )""" .
 
-sh:list a sh:ComponentTemplate ; 
-  sh:templateMessage "For list element"@en ;
-  sh:message "Argument must be a shape"@en ;
-  sh:templateQuery """# LIST
-  SELECT [projection] ?this ?subject ?predicate ?object 
-	?PS ?CS ([severity] AS ?severity) ([component] AS ?component) ?message
-  WHERE { [outer] [inner]
-          { FILTER NOT EXISTS { ?this rdf:rest* rdf:nil .}
-            BIND ( "List does not terminate at rdf:nil" AS ?message )
-            BIND ( ?this AS ?subject )
-            BIND ([PS] AS ?PS)
-          } UNION {
-            ?this rdf:rest* ?tail .
-            FILTER ( ( EXISTS { ?tail rdf:rest ?tail1 . ?tail rdf:rest ?tail2 .
-                                FILTER ( ! sameTerm(?tail1,?tail2) ) } ) ||
-                     ( EXISTS { ?tail rdf:first ?elem1 . ?tail rdf:first ?elem2 .
-                                FILTER ( ! sameTerm(?elem1,?elem2) ) } ) )
-            BIND ( "List has multiple firsts or rests" AS ?message )
-            BIND ( ?this AS ?subject )
-            BIND ( ?tail AS ?object )
-            BIND ([PS] AS ?PS)
-          } UNION {
-            FILTER EXISTS { rdf:nil rdf:rest|rdf:first ?x }
-            BIND ( "rdf:nil has rdf:first or rdf:rest" AS ?message )
-            BIND ( ?this AS ?subject )
-            BIND ([PS] AS ?PS)
-         } UNION { [c("rdf:rest*/rdf:first" argument)] 
-    } } # END LIST
-""" .
-
 sh:hasValue a sh:ComponentTemplate ; 
   sh:templateMessage "Missing required value "@en ;
   sh:message "Value can be anything"@en ;
@@ -536,26 +506,63 @@ sh:maxCount a sh:ComponentTemplate ;
   [group] HAVING ( COUNT (DISTINCT ?this) > [argument] )
   VALUES (?message ?severity) { ( [message] [severity] ) }""" .
 
+sh:closed a sh:ComponentTemplate ; 
+  sh:templateMessage "Value found for disallowed property"@en ;
+  sh:message "Closed properties need to be IRIs"@en ;
+  sh:templateFilter """( ! EXISTS { ?this !([l(p(argument) "|")]) ?value } )""" .
+
+sh:list a sh:ComponentTemplate ; 
+  sh:templateMessage "For list element"@en ;
+  sh:message "Argument must be a shape"@en ;
+  sh:templateQuery """# LIST
+  SELECT [projection] ?this ?subject ?predicate ?object 
+	?PS ?CS ([severity] AS ?severity) ([component] AS ?component) ?message
+  WHERE { [outer] [inner]
+          { FILTER NOT EXISTS { ?this rdf:rest* rdf:nil .}
+            BIND ( "List does not terminate at rdf:nil" AS ?message )
+            BIND ( ?this AS ?subject )
+            BIND ([PS] AS ?PS)
+          } UNION {
+            ?this rdf:rest* ?tail .
+            FILTER ( ( EXISTS { ?tail rdf:rest ?tail1 . ?tail rdf:rest ?tail2 .
+                                FILTER ( ! sameTerm(?tail1,?tail2) ) } ) ||
+                     ( EXISTS { ?tail rdf:first ?elem1 . ?tail rdf:first ?elem2 .
+                                FILTER ( ! sameTerm(?elem1,?elem2) ) } ) )
+            BIND ( "List has multiple firsts or rests" AS ?message )
+            BIND ( ?this AS ?subject )
+            BIND ( ?tail AS ?object )
+            BIND ([PS] AS ?PS)
+          } UNION {
+            FILTER EXISTS { rdf:nil rdf:rest|rdf:first ?x }
+            BIND ( "rdf:nil has rdf:first or rdf:rest" AS ?message )
+            BIND ( ?this AS ?subject )
+            BIND ([PS] AS ?PS)
+         } UNION { [c("rdf:rest*/rdf:first" argument)] 
+    } } # END LIST
+""" .
+
 sh:shape a sh:ComponentTemplate ; 
   sh:templateMessage "Shape violation"@en ;
   sh:message "Shapes must not be literals"@en ;
-  sh:templateQuery """[s(argument)]""" .
+  sh:templateQuery """  SELECT [projection] ?this ?subject ?property ?object #SHAPE
+	 ?PS ?CS ?severity ([component] AS ?component) ?message
+  WHERE { [s(argument)] }""" .
 
 sh:not a sh:ComponentTemplate ; 
   sh:templateMessage "Fails to validate against negated shape"@en ;
   sh:message "Shapes must not be literals"@en ;
-  sh:templateQuery """SELECT [projection] ?this ?subject ?property ?object
-	 ?PS ?CS ?severity ([component] as ?component) ?message 
+  sh:templateQuery """SELECT [projection] ?this ?subject ?property ?object #NOT
+	 ([PS] AS ?PS) ?CS ?severity ([component] as ?component) ?message 
    WHERE { { [outer] [inner] 
            } MINUS { 
-           { SELECT [projection] ?this
+           { SELECT [projection] ?this ?PS
              WHERE { { [s(argument)] } FILTER ( ?severity = sh:Violation ) } } } }
    VALUES (?message ?severity) { ( [message] [severity] ) }""" .
 
 sh:and a sh:ComponentTemplate ; 
   sh:templateMessage "AND"@en ;
   sh:message "Shapes must not be literals"@en ;
-  sh:templateQuery """SELECT [projection] ?this ?subject ?property ?object
+  sh:templateQuery """SELECT [projection] ?this ?subject ?property ?object #AND
 	?PS ?CS ?severity ([component] AS ?component) ?message
 WHERE { { [l(s(argument) " } UNION { ")] } }""" .
 
@@ -577,17 +584,12 @@ sh:propValues a sh:ComponentTemplate ;
   sh:message "Argument is path, shape list"@en ;
   sh:templateQuery """[c(p(path) shape)]""" .
 
-sh:closed a sh:ComponentTemplate ; 
-  sh:templateMessage "Value found for disallowed property"@en ;
-  sh:message "Closed properties need to be IRIs"@en ;
-  sh:templateFilter """( ! EXISTS { ?this !([l(p(argument) "|")]) ?value } )""" .
+# sh:partition not possible because partition tears shapes apart
 
 sh:query a sh:ComponentTemplate ; 
   sh:templateMessage "Query component failure"@en ;
   sh:message "Queries need to be strings"@en ;
   sh:templateQuery """[argument]""" .
-
-# sh:partition not possible because partition tears shapes apart
 
 
 # PART 5: Compatability Constructs and Their Implementation (incomplete)
