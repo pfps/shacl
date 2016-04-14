@@ -99,7 +99,7 @@ def pathtoSPARQL(g,value) :
     else : return value
 
 def fragmentPattern(g,code,message,component,context) :	# SubSelect <- GroupGraphPattern pieces
-    body = """  SELECT [projection] ?this (?this AS ?subject) # FRAGMENT
+    body = """  SELECT [projection] ?this (?this AS ?subject) ([PS] AS ?PS) # FRAGMENT
          ([severity] AS ?severity) ([component] AS ?component) ([message] AS ?message) 
   WHERE { [outer] [inner]
           [code] }"""
@@ -224,35 +224,9 @@ def lessThanOrEqualsC(g,value,context) :	# fragpat GroupGraphPattern pieces
             { "path1":pathS(path1), "path2":pathS(path2) }
     return fragmentPattern(g,frag,"Second path value too small",SH.lessThanOrEqual,context)
 
-def listC(g,value,context) :			# SubSelect
-    elementCheck = newContext(g,Literal("rdf:rest*/rdf:first"),
-                              "For list element", value, SH.list, context) 
-    result = """# LIST
-  SELECT [projection] ?this ?subject ?predicate ?object 
-	([severity] AS ?severity) ?message ([component] AS ?component)
-  WHERE { [outer] [inner]
-          { FILTER NOT EXISTS { ?this rdf:rest* rdf:nil .}
-            BIND ( "List does not terminate at rdf:nil" AS ?message )
-            BIND ( ?this AS ?subject )
-          } UNION {
-            ?this rdf:rest* ?tail .
-            FILTER ( ( EXISTS { ?tail rdf:rest ?tail1 . ?tail rdf:rest ?tail2 .
-                                FILTER ( ! sameTerm(?tail1,?tail2) ) } ) ||
-                     ( EXISTS { ?tail rdf:first ?elem1 . ?tail rdf:first ?elem2 .
-                                FILTER ( ! sameTerm(?elem1,?elem2) ) } ) )
-            BIND ( "List has multiple firsts or rests" AS ?message )
-            BIND ( ?this AS ?subject )
-            BIND ( ?tail AS ?object )
-          } UNION {
-            FILTER EXISTS { rdf:nil rdf:rest|rdf:first ?x }
-            BIND ( "rdf:nil has rdf:first or rdf:rest" AS ?message )
-            BIND ( ?this AS ?subject )
-         } UNION { [elementCheck] } }""" 
-    return substitute(result,g,context,elementCheck=elementCheck,component=SH.list)
-
 def hasValueC(g,value,context) :		# SubSelect
     body = """# hasValue
-  SELECT [projection] ([message] AS ?message) ([severity] AS ?severity) ([component] AS ?component)
+  SELECT [projection] ([PS] AS ?PS) ([severity] AS ?severity) ([component] AS ?component) ([message] AS ?message)
   WHERE { [outer] 
           FILTER NOT EXISTS { [inner] FILTER sameTerm(?this,[value]) } }""" 
     return substitute(body,g,context,value=value,component=SH.hasValue,
@@ -261,7 +235,7 @@ def hasValueC(g,value,context) :		# SubSelect
 def uniqueLangC(g,value,context) :		# SubSelect
     if value == true :
         body = """# uniquelang
-  SELECT [projection] ([message] AS ?message) ([severity] AS ?severity) ([component] AS ?component)
+  SELECT [projection] ([PS] AS ?PS) ([severity] AS ?severity) ([component] AS ?component) ([message] AS ?message)
   WHERE { [outer] [inner]
           BIND (lang(?this) AS ?lang)
           FILTER (isLiteral(?this) && bound(?lang) && ?lang != "") }
@@ -271,7 +245,7 @@ def uniqueLangC(g,value,context) :		# SubSelect
 
 def minCountC(g,value,context) :		# SubSelect
     body = """# minCount
-  SELECT [projection] ([message] AS ?message) ([severity] AS ?severity) ([component] AS ?component)
+  SELECT [projection] ([PS] AS ?PS) ([severity] AS ?severity) ([component] AS ?component) ([message] AS ?message)
   WHERE { [outer] OPTIONAL { [inner] } }
   [group] HAVING ( COUNT (DISTINCT ?this) < [value] )"""
     return substitute(body,g,context,value=value,component=SH.minCount,
@@ -279,16 +253,54 @@ def minCountC(g,value,context) :		# SubSelect
 
 def maxCountC(g,value,context) :		# SubSelect
     body = """# maxCount
-  SELECT [projection] ([message] AS ?message) ([severity] AS ?severity) ([component] AS ?component)
+  SELECT [projection] ([PS] AS ?PS) ([severity] AS ?severity) ([component] AS ?component) ([message] AS ?message)
   WHERE { [outer] OPTIONAL { [inner] } }
   [group] HAVING ( COUNT (DISTINCT ?this) > [value] )"""
     return substitute(body,g,context,value=value,component=SH.maxCount,
                       message=u'"Too many values, want at most %s"' % value)
 
+def closedC(g,value,context) :			# fragment PrimaryExpression
+    paths = [ parttoSPARQL(g,element)
+                   for element in listElements(g,value) ]
+    closed = "!(" + "|".join(paths) + ")"
+    frag = """( ! EXISTS { ?this %(closed)s ?value } )""" % { "closed":closed }
+    return fragment(g,frag,"Value found for disallowed property", SH.closed, context)
+
+# components with sub-shapes
+
+def listC(g,value,context) :			# SubSelect
+    elementCheck = newContext(g,Literal("rdf:rest*/rdf:first"),
+                              "For list element", value, SH.list, context) 
+    result = """# LIST
+  SELECT [projection] ?this ?subject ?predicate ?object 
+	?PS ?CS ([severity] AS ?severity) ([component] AS ?component) ?message
+  WHERE { [outer] [inner]
+          { FILTER NOT EXISTS { ?this rdf:rest* rdf:nil .}
+            BIND ( "List does not terminate at rdf:nil" AS ?message )
+            BIND ( ?this AS ?subject )
+            BIND ([PS] AS ?PS)
+          } UNION {
+            ?this rdf:rest* ?tail .
+            FILTER ( ( EXISTS { ?tail rdf:rest ?tail1 . ?tail rdf:rest ?tail2 .
+                                FILTER ( ! sameTerm(?tail1,?tail2) ) } ) ||
+                     ( EXISTS { ?tail rdf:first ?elem1 . ?tail rdf:first ?elem2 .
+                                FILTER ( ! sameTerm(?elem1,?elem2) ) } ) )
+            BIND ( "List has multiple firsts or rests" AS ?message )
+            BIND ( ?this AS ?subject )
+            BIND ( ?tail AS ?object )
+            BIND ([PS] AS ?PS)
+          } UNION {
+            FILTER EXISTS { rdf:nil rdf:rest|rdf:first ?x }
+            BIND ( "rdf:nil has rdf:first or rdf:rest" AS ?message )
+            BIND ( ?this AS ?subject )
+            BIND ([PS] AS ?PS)
+         } UNION { [elementCheck] } }""" 
+    return substitute(result,g,context,elementCheck=elementCheck,component=SH.list)
+
 def shapeC(g,value,context) :			# SubSelect
     child = processShape(g,value,context)
     result = """  SELECT [projection] ?this ?subject ?property ?object #SHAPE
-	?severity ([component] AS ?component) ?message
+	 ?PS ?CS ?severity ([component] AS ?component) ?message
   WHERE { [child] }"""
     return substitute(result,g,context,child=child,component=SH.shape)
 
@@ -296,12 +308,13 @@ def shapeC(g,value,context) :			# SubSelect
 def notC(g,value,context) :			# SubSelect
     child = processShape(g,value,context)
     result = """  SELECT [projection] ?this ?subject ?property ?object
-	?severity ([component] as ?component) ?message 
+	 ?PS ?CS ?severity ([component] as ?component) ?message 
   WHERE { [outer] [inner]
           BIND ( "Fails to validate against negated shape" AS ?message )
           BIND ( [severity] AS ?severity ) 
+          BIND ([PS] AS ?PS) 
           MINUS { 
-            SELECT [projection] ?this
+            SELECT [projection] ?this ?PS
             WHERE { { [child] } 
                     FILTER ( ?severity IN ( [severe] ) ) 
                   } } }"""
@@ -313,16 +326,16 @@ def andC(g,value,context) :			# SubSelect
     childs = "{ " + "\n } UNION {\n".join(children) + "\n }" \
              if len(children)>0 else ""
     result = """# COMPONENT and
-  SELECT [projection] ?this ?subject ?property ?object ?severity ([component] AS ?component) ?message
+  SELECT [projection] ?this ?subject ?property ?object ?PS ?CS ?severity ([component] AS ?component) ?message
   WHERE { [childs] }"""
     return substitute(result,g,context,component=SH['and'],childs=childs)
 
-# how should severity be handled?
+# how should severity be handled?  #### FIX!!!!
 def orC(g,value,context) :			# SubSelect
     children = [ processShape(g,child,context)
                  for child in listElements(g,value) ]
     if len(children) == 0 :
-        result="""SELECT [projection] ?this ?subject ?predicate ?object ?severity ?component ?message
+        result="""SELECT [projection] ?this ?subject ?predicate ?object ([PS] AS ?PS) ?CS ?severity ?component ?message
     WHERE { VALUES ( ?this ?subject ?predicate ?object ?message ?component ?severity )
                { ( UNDEF UNDEF UNDEF UNDEF "Empty or" [component] [severity] ) } }""" 
         return substitute(result,g,context,component=SH['or'])
@@ -332,16 +345,10 @@ def orC(g,value,context) :			# SubSelect
         childs = [ """{ SELECT %(projection)s ?this WHERE { %(child)s } }""" % \
                    { "projection":context["projection"], "child":child }
                    for child in itertools.islice(children,1,None) ]
-        result="""SELECT [projection] ?this ?subject ?predicate ?object ?severity ([component] AS ?component) ?message
+        result="""SELECT [projection] ?this ?subject ?predicate ?object 
+		([PS] AS ?PS) ?CS ?severity ([component] AS ?component) ?message
     WHERE { [childs] { [first] }  }"""
         return substitute(result,g,context, first=children[0], component=SH['or'], childs=" ".join(childs))
-
-def closedC(g,value,context) :			# fragment PrimaryExpression
-    paths = [ parttoSPARQL(g,element)
-                   for element in listElements(g,value) ]
-    closed = "!(" + "|".join(paths) + ")"
-    frag = """( ! EXISTS { ?this %(closed)s ?value } )""" % { "closed":closed }
-    return fragment(g,frag,"Value found for disallowed property", SH.closed, context)
 
 def partitionC(g,value,context) :		# SubSelect
     children =  listElements(g,value)
@@ -361,7 +368,7 @@ def partitionC(g,value,context) :		# SubSelect
     bodies.append(final)
     bodys = "{ " + "\n } UNION {\n".join(bodies) + "\n }"
     result = """ # PARTITION
-  SELECT [projection] ?this ?subject ?property ?object ?severity ([component] AS ?component) ?message
+  SELECT [projection] ?this ?subject ?property ?object ?PS ?CS ?severity ([component] AS ?component) ?message
   WHERE { [bodys] }   """
     return substitute(result,g,context,component=SH['partition'],bodys=bodys)
 
@@ -373,7 +380,7 @@ def constructShape(g,shape,components,context) :	# SubSelect <- SubSelects
         body = "{ " + " } UNION { ".join(components) + " }"
         result = """# SHAPE start [shape]
   SELECT [projection] ?this ?subject ?predicate ?object 
-	?severity ?component ([shape] AS ?shape) ?message 
+	?PS ?CS ?severity ?component ([shape] AS ?shape) ?message 
   WHERE # SHAPE body\n { [body]
         } # SHAPE end [shape]\n""" 
         return substitute(result,g,context, shape=shape, body=body)
@@ -381,35 +388,30 @@ def constructShape(g,shape,components,context) :	# SubSelect <- SubSelects
 
 # set up a new context that is the values of a path from the current context
 def newContext(g,path,message,childShape,component,context) : # SubSelect
-    childouter = """{ SELECT (IF(BOUND(?p),?p,"UNKNOWN P") AS ?parent) (IF(BOUND(?gp),?gp,"UNKNOWN GP") AS ?grandparent)
-	WHERE { { SELECT (IF(BOUND(?this),?this,"UNK T") AS ?p) (IF(BOUND(?parent),?parent,"UNK P") AS ?gp) WHERE { %(inner)s } }
+    childouter = """{ SELECT (?p AS ?parent) (?gp AS ?grandparent)
+	WHERE { { SELECT (?this AS ?p) (?parent AS ?gp) WHERE { %(inner)s } }
 	} }""" % { "inner":context["inner"] }
     childinner = """{ ?parent %(path)s ?this . }""" % { "path":pathS(path) }
     childcontext=dict(severity=context["severity"],outer=childouter,projection="?parent",
-                      group="GROUP BY ?parent",inner=childinner)
+                      group="GROUP BY ?parent",inner=childinner, PS=childShape)
     child = processShape(g,childShape,childcontext)
     result ="""# newContext
-  SELECT [projection] ?this ?subject ?predicate ?object ?severity ([component] AS ?component) ?message
-  WHERE { 
-   {SELECT (?childGrandparent AS ?parent) ?this # (?childParent AS ?this)
-           ?message ?severity ?subject ?predicate ?object
-     WHERE
-     {{ SELECT (?grandparent AS ?childGrandparent) (?parent AS ?childParent)
-               (?message AS ?childMessage) (?severity as ?childSeverity)
-               (?subject AS ?childSubject) (?predicate AS ?childPredicate) ?object
-        WHERE {     [child]
-              } }
-      BIND( (IF(BOUND(?childPredicate), ?childSubject, ?childParent)) AS ?subject )
-      BIND( (IF(BOUND(?childPredicate), ?childPredicate, [path])) AS ?predicate )
-      BIND( (IF(BOUND(?childPredicate), ?childObject, ?childSubject)) AS ?object )
-      BIND( (IF(BOUND(?childParent), ?childParent, "UNKNOWN")) AS ?this )
-      BIND( CONCAT([message],?childMessage) AS ?message )
-      BIND( [severity] AS ?severity ) 
-      } } 
-      [inner] # subshape inner
-      }"""
+  SELECT DISTINCT [projection] ?this ?subject ?predicate ?object ?PS ?CS ?severity ?component ?message
+  WHERE { { [child] } UNION
+	  { SELECT [projection] ?this (?this AS ?subject) ([path] AS ?predicate) ?object
+		([PS] as ?PS) ([CPS] as ?CS) ([severity] AS ?severity) ([component] AS ?component) ([message] AS ?message)
+	    WHERE { 
+	        { SELECT (?o AS ?object) (?p AS ?this) WHERE
+		  { SELECT (?parent AS ?p) (?this AS ?o ) WHERE {
+			{ [child] 
+			  } FILTER ( sameTerm(?PS,[CPS]) ) 
+		} } }
+		[outer] [inner] 
+	    }
+	  }
+	}"""
     return substitute(result,g,context,message='"'+message+'"',child=child,
-                      component=component, path=curie(g,path) )
+                      component=component, CPS=childShape, path=curie(g,path) )
 
 def propValuesC(g,value,context) :		# SubSelect
     path = pathtoSPARQL(g,g.value(value,RDF.first))
@@ -546,8 +548,8 @@ def processShapeInvocation(g,shape,compatability=False) :
     if ( len(scopes) > 0 ) :
         if ( len(scopes) == 1 ) : scope = scopes[0]
         else : scope = "{ { # SCOPE\n" + "\n} UNION # SCOPE\n { ".join(scopes) + " } }\n"
-        body = processShape(g,shape,{"severity":severity,"outer":"","projection":"",
-                                     "group":"","inner":scope})
+        body = processShape(g,shape,{"severity":severity,"outer":"","projection":"?parent",
+                                     "group":"","inner":scope,"PS":shape})
         return """PREFIX sh: <http://www.w3.org/ns/shacl#>\n""" + body
     else :
 #        print "No scopes for shape", shape
