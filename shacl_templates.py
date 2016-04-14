@@ -97,6 +97,7 @@ def process(g,parse,context,listp=False) :
         elif parse[0] == 'c' :
             p = process(g,parse[1],context)[0]
             l = fetch(g,parse[2],context,listp)
+#            print ("SUB",context)
             return [ newContext(g,p,'"In path %s "'%p,e,context) for e in l ]
 
 def substitut(string,g,context,**kwargs) :
@@ -119,7 +120,7 @@ def listElements(g,head) :
     if ( head is None ) : print( "MALFORMED LIST")
     return elements
 
-universalShape = "SELECT ?object WHERE { BIND ( true AS ?object ) FILTER ( true=false ) }"
+universalShape = "SELECT ?subject WHERE { BIND ( true AS ?subject ) FILTER ( true=false ) }"
 
 def partitionC(g,value,context) :		# SubSelect
     children =  listElements(g,value)
@@ -139,9 +140,9 @@ def partitionC(g,value,context) :		# SubSelect
     bodies.append(final)
     bodys = "{ " + "\n } UNION {\n".join(bodies) + "\n }"
     result = """ # PARTITION
-  SELECT [projection] ?this ?message ?severity ?subject ?property ?object
+  SELECT [projection] ?this ?subject ?property ?object ?PS ?CS ?severity ([component] AS ?component) ?message
   WHERE { [bodys] }   """
-    return substitut(result,g,context,bodys=bodys)
+    return substitut(result,g,context,component=SH['partition'],bodys=bodys)
 
 def constructQuery(g,pattern,filter,having,context) :
     pattern = pattern if pattern is not None else ""
@@ -150,7 +151,7 @@ def constructQuery(g,pattern,filter,having,context) :
     having = """GROUP BY ?this HAVING ( %(having)s )\n""" % { "having":having } \
              if having is not None else ""
     body = """# FRAGMENT 
-  SELECT [projection] ?this ?message ?severity (?this AS ?object)
+  SELECT [projection] ?this (?this AS ?subject) ([PS] AS ?PS) ?severity ([component] AS ?component) ?message
   WHERE { [outer] [inner] %(pattern)s %(filter)s }
   %(having)s VALUES (?message ?severity) { ( [message] [severity] ) }""" % \
       { "filter":filter, "pattern":pattern, "having":having }
@@ -188,8 +189,8 @@ def constructShape(g,shape,components,context) :
     if ( len(components) > 0 ) :
         body = "{ " + " } UNION { ".join(components) + " }"
         result = """# SHAPE start [shape]
-  SELECT [projection] ?this ?message ?severity 
-         ?subject ?predicate ?object ([shape] AS ?shape )
+  SELECT [projection] ?this ?subject ?predicate ?object ?PS ?CS 
+	?component ([shape] AS ?shape) ?message ?severity
   WHERE { # SHAPE body\n  [body]
         } # SHAPE end [shape]\n""" 
         return substitut(result,g,context, shape=shape, body=body)
@@ -197,10 +198,10 @@ def constructShape(g,shape,components,context) :
 
 def fragmentPattern(g,code,message,context) :
     body = """# FRAGMENT 
-  SELECT [projection] ?this ?message ?severity (?this AS ?object)
+  SELECT [projection] ?this (?this AS ?subject) ([PS] AS ?PS) 
+	([severity] AS ?severity) ([component] AS ?component) ([message] AS ?message)
   WHERE { [outer] [inner]
-          [code] }
-  VALUES (?message ?severity) { ( [message] [severity] ) }"""
+          [code] }"""
     result = substitut(body,g,context, code=code, message='"'+message+'"')
     return result
 
@@ -220,59 +221,42 @@ def pathtoSPARQL(g,value) :
 
 # set up a new context that is the values of a path from the current context
 def newContext(g,path,message,childShape,context) :
-    childouter = """{ SELECT (?parent AS ?grandparent) (?this AS ?parent) 
-        WHERE { %(inner)s } }""" % { "inner":context["inner"] }
+    print("NEWCONTEXT",path,context)
+    childouter = """{ SELECT (?p AS ?parent) (?gp AS ?grandparent)
+	WHERE { { SELECT (?this AS ?p) (?parent AS ?gp) WHERE { %(inner)s } }
+	} }""" % { "inner":context["inner"] }
     childinner = """{ ?parent %(path)s ?this . }""" % { "path":path }
     childcontext=dict(severity=context["severity"],outer=childouter,projection="?parent",
-                      group="GROUP BY ?parent",inner=childinner)
+                      group="GROUP BY ?parent",inner=childinner, PS=childShape)
     child = processShape(g,childShape,childcontext)
     result ="""# newContext
-  SELECT [projection] ?this ?message ?severity ?subject ?predicate ?object
-  WHERE { 
-   {SELECT (?childGrandparent AS ?parent) (?childParent AS ?this)
-           ?message ?severity ?subject ?predicate ?object
-     WHERE
-     {{ SELECT (?grandparent AS ?childGrandparent) (?parent AS ?childParent)
-               (?message AS ?childMessage) (?severity as ?childSeverity)
-               (?subject AS ?childSubject) (?predicate AS ?childPredicate) ?object
-        WHERE {     [child]
-              } }
-      BIND( (IF(BOUND(?childSubject), ?childSubject, ?childParent)) AS ?subject )
-      BIND( (IF(BOUND(?childSubject), ?childPredicate, "[path]")) AS ?predicate )
-      BIND( CONCAT([message],?childMessage) AS ?message )
-      BIND( [severity] AS ?severity ) 
-      } } 
-    [inner] # subshape inner
+  SELECT [projection] ?this ?subject ?predicate ?object ?PS ?CS ?severity ?component ?message
+  WHERE { { [child] } UNION
+	  { SELECT [projection] ?this (?this AS ?subject) ("[path]" AS ?predicate) ?object
+		([PS] as ?PS) ([CPS] as ?CS) ([severity] AS ?severity) ([component] AS ?component) ([message] AS ?message)
+	    WHERE { 
+	        { SELECT (?o AS ?object) (?p AS ?this) WHERE
+		  { SELECT (?parent AS ?p) (?this AS ?o ) WHERE {
+			{ [child] 
+			  } FILTER ( sameTerm(?PS,[CPS]) ) 
+		} } }
+		[outer] [inner] 
+	    }
+	  }
     }"""
-    return substitut(result,g,context,message=message,path=path,child=child)
+    return substitut(result,g,context,message=message,path=path,child=child,CPS=childShape)
 
 # non-template SHACL constructs - property name, function that processes it
 constructs = { 'partition':partitionC}
 
 # process a shape for shape invocation
 def processShapeInvocation(g,shape,printShapes=False) :
-    # process scopes
     scopes = []
     severity = g.value(shape,SH.severity,default=Violation)
-#    for scopeValue in g.objects(shape,SH.scopeNode) :
-#        scopes.append("VALUES ?this { %s }" % scopeValue.n3())
-#    for scopeValue in g.objects(shape,SH.scopeClass) :
-#        scopes.append("?this rdf:type/rdfs:subClassOf* %s ." % scopeValue.n3())
-#    for scopeValue in g.objects(shape,SH.scopePropertyObject) :
-#        scopes.append("SELECT DISTINCT ?this WHERE { ?that %s ?this . }" % scopeValue.n3())
-#    for scopeValue in g.objects(shape,SH.scopePropertySubject) :
-#        scopes.append("SELECT DISTINCT ?this WHERE { ?this %s ?that . }" % scopeValue.n3())
-#    if (shape,SH.scopeAllObjects,true) in g :
-#        scopes.append("SELECT DISTINCT ?this WHERE { ?that ?property ?this . }")
-#    if (shape,SH.scopeAllSubjects,true) in g :
-#        scopes.append("SELECT DISTINCT ?this WHERE { ?this ?property ?that . }")
-#    for scopeValue in g.objects(shape,SH.scopeQuery) :
-#        scopes.append("SELECT DISTINCT ( ?scope AS ?this ) WHERE { %s }" % scopeValue.n3())
     scope = processScopes(g,shape,printShapes)
     if scope is not None :
-##    if ( len(scopes) > 0 ) :
-##        scope = "{ # SCOPE\n" + "\n} UNION # SCOPE\n { ".join(scopes) + " }\n"
-        body = processShape(g,shape,{"severity":severity,"outer":"","projection":"","group":"","inner":scope})
+        body = processShape(g,shape,{"severity":severity,"outer":"","projection":"?parent",
+		                     "group":"","inner":scope,"PS":shape})
         if body == "" and printShapes : print( "No bodies for shape", shape)
         return None if body == "" else \
             """PREFIX sh: <http://www.w3.org/ns/shacl#>\n""" + body
@@ -338,12 +322,15 @@ def processShape(g,shape,context) :
     assert metamodel is not None
     for template in metamodel.subjects(RDF.type,SH.ComponentTemplate) :
         for value in g.objects(shape,template) :
+#            print("SHAPE CONTEXT",context)
             components.append( constructTemplate(g,template,value,context) )
     return constructShape(g,shape,components,context)
 
 def constructTemplate(g,template,argument,context) :
     context = dict(context) # copy the context to make changes to it
     context["argument"] = argument # add argument value to context
+    context["component"] = template # add template as component
+#    print("TEMPLATE",argument,template,context)
     for argComponent in metamodel.objects(template,SH.propValues) : # look for arguments
         argPath = pathtoSPARQL(metamodel,metamodel.value(argComponent,RDF.first))
         argShape = metamodel.value(metamodel.value(argComponent,RDF.rest),RDF.first)
@@ -365,6 +352,7 @@ def constructTemplate(g,template,argument,context) :
     else :
         query = metamodel.value(template,SH.templateQuery)
         if query is not None :
+#            print("TEMPLATE CONTEXT",context)
             return substitut(query,g,context)
     print( "TEMPLATE HAS NO CODE",template)
     return ""
