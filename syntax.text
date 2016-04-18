@@ -2,51 +2,54 @@
 
 == Introduction ==
 
-=== Central Changes ===
+=== Major Changes ===
+
+==== Collapsing Shapes and Constraints ====
 
 The central change in this proposal is to collapse constraints and shapes into one
 construct.  Instead of, for example, having sh:or and similar component properties
 take shapes as arguments and produce constraint components they take shapes and
-produce shapes.  This results in smaller shapes and a more uniform syntax.  This
-change replaces
+produce shapes.  This results in smaller shapes and a more uniform syntax, replacing
 
   ex:s1 a sh:Shape ;
     sh:constraint [
       a sh:NodeConstraint ;
       sh:or
         ( [ a sh:Shape ;
-       	    sh:constraint [
-	      a sh:NodeConstraint ;
- 	      sh:class ex:Person
-	      ]
-	    ]
-	  [ a sh:Shape ;
-	    sh:constraint [
-	      a sh:NodeConstraint ;
-	      sh:in ( ex:elvis )
-	      ]
-	    ] )
+            sh:constraint [
+              a sh:NodeConstraint ;
+              sh:class ex:Person
+              ]
+            ]
+          [ a sh:Shape ;
+            sh:constraint [
+              a sh:NodeConstraint ;
+              sh:in ( ex:elvis )
+              ]
+            ] )
       ] .
-	   
+           
 with
 
   ex:s1 a sh:Shape ;
     sh:or
       ( [ a sh:Shape ;
-       	  sh:class ex:Person
+          sh:class ex:Person
           ]
-	[ a sh:Shape ;
-	  sh:in ( ex:elvis )
+        [ a sh:Shape ;
+          sh:in ( ex:elvis )
         ] ) .
         
-To make this change work better there is no division between node constraints/shapes,
-property constraints/shapes, and inverse property constraints/shapes.  The difference
-between node, property, and inverse property constraints/shapes is instead controlled
-by the link from the constraint/shape and its enclosing shape.  When processing a
-shape the objects of sh:property links are treated as shapes on the values of the
-sh:predicate argument and the objects of sh:inverseProperty links are treated as
-shapes on the values of the inverse of the sh:predicate arguments.  This change
-replaces
+==== No Property or Inverse Property Constraints ====
+
+There is also no longer any division between node constraints/shapes, property
+constraints/shapes, and inverse property constraints/shapes.  The difference in
+behaviour between node, property, and inverse property constraints/shapes is instead
+controlled by the link to the constraint/shape from its enclosing shape.  When
+processing a shape the objects of sh:property links in the shape are treated as
+shapes on the values of the sh:predicate argument and the objects of
+sh:inverseProperty links are treated as shapes on the values of the inverse of the
+sh:predicate arguments.  This change replaces
 
   ex:s1 a sh:Shape ;
     sh:constraint [
@@ -54,19 +57,19 @@ replaces
       sh:predicate ex:parent ;
       sh:shape [
         a sh:Shape ;
-	sh:constraint [
-	  a sh:PropertyConstraint ;
-	  sh:predicate ex:parent ;
-	  sh:shape [
-	    a sh:Shape ;
-	    sh:constraint [
-	      a sh:PropertyConstraint ;
-	      sh:predicate ex:age ;
-	      sh:minExclusive 50
-	      ]
-	    ]
-	  ]
-	]
+        sh:constraint [
+          a sh:PropertyConstraint ;
+          sh:predicate ex:parent ;
+          sh:shape [
+            a sh:Shape ;
+            sh:constraint [
+              a sh:PropertyConstraint ;
+              sh:predicate ex:age ;
+              sh:minExclusive 50
+              ]
+            ]
+          ]
+        ]
       ] .
 
 with 
@@ -77,13 +80,13 @@ with
       sh:predicate ex:parent ;
       sh:property [
         a sh:Shape ;
-	sh:predicate ex:parent ;
-	sh:property [
-	  a sh:Shape ;
-	  sh:predicate ex:age ;
-	  sh:minExclusive 50
+        sh:predicate ex:parent ;
+        sh:property [
+          a sh:Shape ;
+          sh:predicate ex:age ;
+          sh:minExclusive 50
           ]
-	]
+        ]
       ] .
 
 A previous version of this proposal pulled the sh:predicate constructs out of the
@@ -94,11 +97,11 @@ shapes and had sh:property take a two-element list, resulting in
       a sh:Shape ;
       sh:property ( ex:parent [
         a sh:Shape ;
-	sh:property ( ex:age [
-	  a sh:Shape ;
-	  sh:minExclusive 50
+        sh:property ( ex:age [
+          a sh:Shape ;
+          sh:minExclusive 50
           ] )
-	] )
+        ] )
       ] ) .
 
 The result of these two changes is that there is only one major combining construct
@@ -107,7 +110,7 @@ subcategories of constraints.
 
 === Other Changes ===
 
-There are two several other changes made in this proposal that are somewhat
+There are several other changes made in this proposal that are somewhat
 orthogonal to the central changes.
 
 ==== Single-Argument Components ====
@@ -115,7 +118,7 @@ orthogonal to the central changes.
 Each component of a shape consists of a single triple attached to the shape.  If a
 component needs more than a single parameter then its parameters are bundled into a
 single node.  So a pattern component would not have an optional flag parameter but
-would use a single composite parameter, either a list as in
+would use a single composite parameter when a flag is present, either a list as in
 
   ex:s2 a sh:Shape ;
     sh:pattern ( "^John" "i" ) .
@@ -142,15 +145,15 @@ Constraint components can be repeated, replacing
     sh:constraint [
       sh:and
         ( [ a sh:Shape ;
-	    sh:constraint [
-	      a sh:NodeConstraint ;
-	      sh:class ex:Person
-	      ] ]
-	  [ a sh:Shape ;
-	    sh:constraint [
-	      a sh:NodeConstraint ;
-	      sh:class ex:Alien
-	      ] ] ) .
+            sh:constraint [
+              a sh:NodeConstraint ;
+              sh:class ex:Person
+              ] ]
+          [ a sh:Shape ;
+            sh:constraint [
+              a sh:NodeConstraint ;
+              sh:class ex:Alien
+              ] ] ) .
 
 with
 
@@ -161,9 +164,10 @@ with
 ==== Property Paths ====
 
 Paths of properties and their inverses are allowed instead of just single properties.
-A new construct is used for this sh:propValues, replacing sh:property and
-sh:inverseProperty. [[The name should probably be changed.]]  Property paths permit
-the shape at the beginning of this document to be written as
+A new construct, with property sh:propValues, is used for this, replacing sh:property
+and sh:inverseProperty. '''The name is not great and probably should be changed.'''
+
+Property paths permit the shape at the beginning of this document to be written as
 
   ex:s1 a sh:Shape ;
     sh:propValues [
@@ -182,7 +186,7 @@ or using the older list syntax as
 
 ==== RDFS Typing in Shape Graphs ====
 
-This proposal removes the for most shapes include an explicit rdf:type link to
+This proposal removes the need for most shapes include an explicit rdf:type link to
 sh:Shape.  It does this by using rdfs:domain and rdfs:range for various properties,
 which are given in the metamodel for SHACL, and then using RDFS typing for the shapes
 graph.  If all shapes have explicit typing then there is no need for this mechanism.
@@ -192,10 +196,10 @@ graph.  If all shapes have explicit typing then there is no need for this mechan
 All strings that contain language to be presented to users are of type
 rdf:langString.
 
-==== What Follows ====
+=== What Follows ===
 
 The details of the proposal follow.  To set the context of the proposal there are
-preamble and conformance sections.  There are sections on the core syntax, an
+preamble and conformance sections.  Then there are sections on the core syntax, an
 informal semantics, and an extension mechanism.  Each of these three sections builds
 on the previous, but the syntax changes are independent of the semantics which is
 independent of the extension mechanism.
@@ -205,15 +209,15 @@ independent of the extension mechanism.
 == Preamble ==
 
 SHACL is designed to determine whether some information satisfies a set of
-conditions.  This process is called 'validation' in SHACL.  The main functionality
-provided by a SHACL engine is to determine whether one RDF graph, called the data
-graph and containing the information to be validated, validates against another RDF
-graph, containing the conditions and called the shapes graph because the main
+conditions.  This process is called validation in SHACL.  The main functionality
+provided by a SHACL engine is to determine whether one RDF graph, called the
+''data graph'' and containing the information to be validated, validates against another RDF
+graph, containing the conditions and called the ''shapes graph'' because the main
 syntactic construct in SHACL is the shape.  Data graphs and nodes in the data graph
 are said to validate against shapes and shapes graphs.
 
 SHACL is divided into a core portion and an extension portion.  The extension portion
-of SHACL uses SPARQL 1.1 Query Language queries in the shapes graph in validation.
+of SHACL uses SPARQL 1.1 Query Language queries from the shapes graph in validation.
 
 This document uses Turtle syntax for graphs and nodes, with the following prefix
 bindings:
@@ -224,7 +228,7 @@ bindings:
   sh:   http://www.w3.org/ns/shacl#
 
 SHACL depends on a notion of instance that uses vocabulary from RDF (rdf:type) and
-RDFS (rdfs:subClassOf) but in a way different from both.  A node is a SHACL instance
+RDFS (rdfs:subClassOf) but in a way different from both.  A node is a ''SHACL instance''
 in the data graph of another node precisely when there is a triple in the data graph
 with the instance node as subject, rdf:type as predicate, and object that is either
 the other node itself or is linked to that node via a chain of triples in the data
@@ -232,30 +236,35 @@ graph each with rdfs:subClassOf as predicate.
 
 All SHACL constructs described here are composed only of triples in the shapes graph.
 
-SHACL uses lists in the shapes graph in its syntax.  The list nodes of a node in the
+SHACL uses lists in the shapes graph in its syntax.  The ''list nodes'' of a node in the
 shapes graph are defined as the nodes in transitive-reflexive closure of rdf:rest
 triples in the shapes graph considered as a directed relationship between nodes.  A
-node in the shapes graph is a SHACL list precisely when
-#rdf:nil is in its list nodes,
+node in the shapes graph is a SHACL ''list'' precisely when
+#rdf:nil is one of its list nodes,
 #all its list nodes have a single rdf:rest, except that rdf:nil has none, and 
 #all its list nodes have a single rdf:first, except that rdf:nil has none.
-The rdf:first values for the list nodes are the elements of the list, in order.
-A list where all the elements have some characteristic is called a list of that
-characterstic.
+The rdf:first values for the list nodes are the ''elements'' of the list, in order.
+A list where all the elements have some characteristic is called a
+''list of that characterstic'', e.g., a list where all the elements are IRIs
+is called a list of IRIs.
 
-The objects of triples with a given subject and predicate are values of the predicate
+The objects of triples with a given subject and predicate are ''values'' of the predicate
 for the subject.  That subject is said to have these objects for the predicate.
 
 == Conformance ==
 
 A SHACL validation engine MUST provide an interface that validates a data graph
 against a shapes graph containing core SHACL constructs, as described herein, and
-returns all the validation results for each shape in the shapes graph.  A SHACL
+returns all the validation results for each scoped shape in the shapes graph.  A SHACL
 validation engine MAY provide other interfaces that return only some of the
 validation results.  These other interfaces MUST also return a boolean result that is
 true only if this set is the entire set of validation results.  A SHACL validation
 engine MAY provide an interface that returns true if there is at least one validation
 result with severity sh:Violation, false otherwise.
+
+If the shapes graph provided to it is syntactically illegal a SHACL
+validation engine MUST so signal.  The engine MAY try to use the illegal shapes
+graph for validation or MAY terminate processing without performing validation.
 
 A SHACL validation engine MAY provide interfaces that construct the shapes graph and
 data graph from other inputs and perform validation on these constructed graphs.  If
@@ -265,9 +274,9 @@ the graph with that name, or the default graph of the dataset if not provided wi
 graph name, and incorporating other graphs from the datatset using owl:imports.  The
 engine constructs the shapes graph by starting with all graphs in the dataset with
 names taken from objects of sh:shapesGraph triples in the data graph and then using
-owl:imports.  [[Does this need to be more precise?]]
+owl:imports.  '''Does this need to be more precise?'''
 
-A SHACL validation engine MUST implement all the core constructs of SHACL.  If a
+A SHACL validation engine MUST implement all the constructs of core SHACL.  If a
 SHACL validation engine implements any of the extended constructs of SHACL then it
 MUST implement them all.
 
@@ -277,28 +286,29 @@ instance there of an expected type (e.g., sc:scopeClass values and rdfs:Class).
 
 A SHACL validation engine MUST provide an interface that signals an error if the
 shapes graph contains SHACL instances of sh:Shape that do not conform to the syntax
-herein or that have themselves as a shape in the transitive closure of their core
-components and filters.  [[Does this need to be more precise?]]  If the SHACL
+herein or that have themselves as a shape in the transitive closure of their
+components and filters.  '''Does this need to be more precise?'''  If the SHACL
 validation engine implements any of the extended constructs of SHACL then this MUST
-also consider the syntax of template components.
+also consider the syntax of template components and template scopes.
 
 
-== Core Syntax ==
+== Core SHACL Syntax ==
 
-The main SHACL construct is a shape.  A shape is a node in the shapes graph that is
-an RDFS instance of sh:Shape in the shapes graph.
+The main SHACL construct is a shape.  A ''shape'' is a node in the shapes graph that is
+an RDFS instance of sh:Shape in the shapes graph.  (See below for a
+different definition of shapes in a shape graph.)
 
-Shapes in SHACL have
-#zero or more scopes (triples with the shape as subject and sh:scopeNode, sh:scopeClass, sh:scopePropertyObject, sh:scopePropertySubject, sh:scopeAllObjects, or sh:scopeAllSubjects as the predicate),
-#zero or more filters (triples with sh:filter as the predicate), whose objects are themselves shapes,
-#one or more components (triples with the shape as subject and one of the component properties below as property).
+Shapes in core SHACL have
+#zero or more ''scopes'' (triples with the shape as subject and sh:scopeNode, sh:scopeClass, sh:scopePropertyObject, sh:scopePropertySubject, sh:scopeAllObjects, or sh:scopeAllSubjects as the predicate),
+#zero or more ''filters'' (triples with sh:filter as the predicate), whose objects are themselves shapes, and
+#zero or more ''components'' (triples with the shape as subject and one of the component properties below as property).
 
 The scopes of a shape select nodes for validation.  Filters further cut down
 on the nodes for validation.  Components state conditions that nodes need to
 satisfy to validate against the shape.
 
-The syntax of the various SHACL core components are:  
-  PREDICATE       OBJECT
+The syntax of the various core SHACL components are:  
+  PROPERTY        VALUE
   sh:in           list of IRIs and literals
   sh:class        IRI (which is used as a class)
   sh:classIn      list of IRIs (which are used as classes)
@@ -311,7 +321,8 @@ The syntax of the various SHACL core components are:
   sh:minInclusive literal
   sh:maxExclusive literal
   sh:maxInclusive literal
-  sh:nodeKind     sh:BlankNode or sh:IRI or sh:Literal or ...
+  sh:nodeKind     sh:BlankNode or sh:IRI or sh:Literal or
+                  BlankNodeOrIRI or BlankNodeOrLiteral or IRIOrLiteral
   sh:pattern      string used as a regular expression pattern  or
                   two-element list of pattern and string used as flags
   sh:equals       two paths
@@ -330,23 +341,23 @@ The syntax of the various SHACL core components are:
   sh:uniqueLang   boolean
   sh:partition    list of shapes
   sh:closed       list of path parts (which are used as (inverse) properties)
+  
+  sh:constraint      shape                   (for compatability)
+  sh:property        shape with sh:predicate (for compatability)
+  sh:inverseProperty shape with sh:predicate (for compatability)
 
-  sh:constraint	  		shape			for compatability
-  sh:property			shape with sh:predicate	for compatability
-  sh:inverseProperty		shape with sh:predicate	for compatability
-  sh:qualifiedValueShape	shape with qmin or qmax	for compatability
+A SHACL ''path'' is a path part or a blank node that is a list of SHACL path
+parts.  A core SHACL ''path part'' is either an IRI or a non-list blank node with a
+single value for sh:inverse.
 
-A path is a path part or a list of path parts.  A SHACL core path part is either an
-IRI or a node with an sh:inverse link.  Ambiguous constructions are not allowed.
-[[Perhaps it would be better to just say that multi-element paths and inverse
-constructs must be blank nodes.]]
-
-Several other properties of shapes are part of SHACL
-  sh:severity	  sh:Info or sh:Warning or sh:Violation
+Several other properties and IRIs are used in SHACL
+  PROPERTY	  Value
+  sh:severity     sh:Info or sh:Warning or sh:Violation
+  sh:message      language tagged-string
   sh:name         language-tagged string
   sh:description  language-tagged string
-  sh:message      language tagged-string
-  sh:order        decimal
+  sh:order        decimal literal
+  sh:group	  property group
   sh:defaultValue IRI or literal
 
 Note: Qualified cardinalities are replaced by an embedded shape where the embedded
@@ -360,7 +371,7 @@ shape's filter has the same role as the value for sh:qualifiedValueShape.
    sh:propValues [ sh:path ex:child ; sh:class ex:Person ] ;
    sh:propValues [ sh:path ex:age ;
                    sh:datatype xs:integer;
- 		   sh:minCount 1 ; sh:maxCount 1 ] .
+                   sh:minCount 1 ; sh:maxCount 1 ] .
 
 A graph validates against exs:personShape if all SHACL instances of
 ex:Person in that graph have all their stated names be strings, all their
@@ -383,18 +394,18 @@ ex:Professional.
   ex:IssueShape a sh:Shape ;
     sh:scopeClass ex:Issue;
     sh:propValues [ sh:path ex:state ;
-    		    sh:in (ex:unassigned ex:assigned) ;
- 		    sh:minCount 1 ; sh:maxCount 1 ] ;
+                    sh:in (ex:unassigned ex:assigned) ;
+                    sh:minCount 1 ; sh:maxCount 1 ] ;
     sh:propValues [ sh:path ex:reportedBy
-    		    ; sh:shape ex:UserShape ;
- 		    sh:minCount 1 ; sh:maxCount 1 ] .
+                    ; sh:shape ex:UserShape ;
+                    sh:minCount 1 ; sh:maxCount 1 ] .
   ex:UserShape a sh:Shape ;
     sh:propValues [ sh:path foaf:name ;
-    		    sh:datatype xsd:string ;
- 		    sh:minCount 1 ; sh:maxCount 1 ] ;
+                    sh:datatype xsd:string ;
+                    sh:minCount 1 ; sh:maxCount 1 ] ;
     sh:propValues [ sh:path foaf:mbox ;
-    		    sh:nodeKind sh:IRI ;
- 		    sh:minCount 1 ] .
+                    sh:nodeKind sh:IRI ;
+                    sh:minCount 1 ] .
 
 Example 1 from SHACL document
 
@@ -402,17 +413,17 @@ Example 1 from SHACL document
    sh:scopeNode ex:John ;
    sh:scopePropertyObject ex:parent ;
    sh:propValues [ sh:path ex:dependent ;
-   		   sh:class ex:Person ; sh:class ex:Child ;
- 		   sh:shape ex:sample2 ] ;
+                   sh:class ex:Person ; sh:class ex:Child ;
+                   sh:shape ex:sample2 ] ;
    sh:propValues [ sh:path ex:age ;
-   		   sh:datatype xs:integer ;
- 		   sh:minCount 1 ; sh:maxCount 1 ;
- 		   sh:minInclusive 12 ] ;
+                   sh:datatype xs:integer ;
+                   sh:minCount 1 ; sh:maxCount 1 ;
+                   sh:minInclusive 12 ] ;
   exs:sample2 a sh:Shape ;
    sh:propValues [ sh:path ex:age ;
-   		   sh:datatype xs:integer ;
- 		   sh:minCount 1 ; sh:maxCount 1 ;
-		    sh:minInclusive 25 ] .
+                   sh:datatype xs:integer ;
+                   sh:minCount 1 ; sh:maxCount 1 ;
+                    sh:minInclusive 25 ] .
 
 Just showing some other syntax.
 
@@ -421,102 +432,108 @@ Just showing some other syntax.
 
 Validation results are essentially the same as in the current design.
 
-sh:subject, sh:predicate, and sh:object will be set as appropriate to each component
-here.  sh:sourceConstraint is removed as there are no longer any constraints.
+sh:subject, sh:predicate, and sh:object are set as appropriate to each component
+here.  sh:sourceConstraint is not used as there are no longer any constraints.
 sh:sourceTemplate is the renamed as sh:Component and is the component property.
 
 
-== Informal Semantics for Core (no recursion) ==
+== Semantics for Core SHACL ==
 
-A data graph validates against a shapes graph if the data graph validates
-against every shape in the shapes graph that has at least one scope.
-A data graph validates against a shape if the set of nodes of the graph
-selected by any scope of the shape validate against the shape.
+A data graph ''validates'' against a shapes graph if the data graph
+validates against every node in the shapes graph that is the subject of at
+least one triple whose predicate is one of the scope properties.  These
+nodes are called the ''scoped shapes'' of the shapes graph.  Any node in the
+shapes graph that is used as a shape during validation is then a shape
+whether it has SHACL type sh:shape or not.  (This is a different definition
+of shapes but it does not require any use of typing to determine what is a
+shape.)
 
-A sh:scopeNode value selects that node.
-A sh:scopeClass value selects each node that is a SHACL instance of the
+A data graph ''validates'' against a scoped shape if the set of nodes of the graph
+selected by any scope of the scoped shape validates against the scoped shape.
+
+Scopes ''select'' certain RDF terms (or nodes, but RDF only uses node with
+respect to the nodes of an RDF graph).
+A sh:scopeNode value selects that term.
+A sh:scopeClass value selects each term that is a SHACL instance of the
 class in the data graph. 
-A sh:scopePropertyObject value selects each node that is the object of some 
-triple with that property as predicate in the data graph.
-A sh:scopePropertySubject value selects each node that is the subject of a
-triple with that property as predicate in the data graph. 
-A sh:scopeAllObjects selects all nodes that are objects of some triple in
+A sh:scopePropertyObject value selects each term that is the object of some 
+triple in the data graph with that property as predicate.
+A sh:scopePropertySubject value selects each term that is the subject of a
+triple in the data graph with that property as predicate. 
+A sh:scopeAllObjects selects all terms that are the object of some triple in
 the data graph.
-A sh:scopeAllSubjects selects all nodes that are subjects of some triple in
+A sh:scopeAllSubjects selects all terms that are the subject of some triple in
 the data graph.
 
-A set of nodes (the input nodes) validates against a shape as follows.
-In-focus nodes are those input nodes which validate against each of the
-filters.  Input nodes that are not in-filter nodes are called out-of-filter
-nodes.
+A set of RDF terms (the ''focus nodes'') validates against a shape as
+follows.  The ''in-filter nodes'' are those focus nodes which validate
+against each of the filters of the shape.  Focus nodes that are not
+in-filter nodes are called ''out-of-filter nodes''.
 
 To uniformly handle all components the semantics for components is defined in terms
 of a set of of nodes (the in-filter nodes) and not in terms of a single node.
-
 Some components (sh:shape, sh:and, sh:or, sh:not, sh:hasValue, sh:minCount,
 sh:maxCount, sh:uniqueLang, and sh:partition) work on this set as a whole.  There is
-one or more elements in the validation result precisely when one or more in-filter
+one or more elements in the ''validation result'' precisely when one or more in-filter
 node fails to validate against the component.  The component separately determines
 which in-filter nodes validate or fail to validate against the component.
-
 The other components (sh:in, ..., sh:pattern, sh:propValues) work on each
-in-filter node independently.  The validation results for the component
+in-filter node independently.  The ''validation results'' for the component
 contains an element for each in-filter node that failed to validate against
-that component.  In-filter nodes for which there is no validation result are
-considered to validate against the component.
+that component.  in-filter nodes for which there is no validation result are
+considered to ''validate'' against the component.
 
-A set of input nodes validates against a shape if all in-filter nodes
-validate against each of the shape's components.
+A set of focus nodes ''validates'' against a shape if the set of in-filter
+nodes from this set of focus nodes validates against each of the shape's
+components.
 
-The core components work as follows, where all typing determinations
-are made in the data graph, all triples come from the data graph, and paths
-are processed similar to path processing in the SPARQL 1.1 Query Language.
+The core components work as follows, where all typing determinations are made in the
+data graph, all triples come from the data graph, and paths are processed as in the
+SPARQL 1.1 Query Language.  For components that are defined using SPARQL operators,
+an error result is treated as if the operator had returned false.
 
 * sh:in list of node
-:: Each in-focus node is in the list.
+:: Each in-filter node is a member of the list.
 * sh:class class
-:: Each in-focus node has class as one of its SHACL types.
+:: Each in-filter node has class as one of its SHACL types.
 * sh:classIn ( class ... )
-:: Each in-focus node has one of the classes as one of its SHACL types.
+:: Each in-filter node has one of the classes as one of its SHACL types.
 * sh:datatype datatype
-:: Each in-focus node has datatype as its datatype.
+:: Each in-filter node has datatype as its datatype.
 * sh:datatypeIn ( datatypes ... )
-:: Each in-focus node has one of the datatypes as its datatype.
+:: Each in-filter node has one of the datatypes as its datatype.
 * sh:directType class
-:: Each in-focus node has an rdf:type link to the class.
+:: Each in-filter node has an rdf:type link to the class.
 * sh:minLength non-negative integer
-:: The SPARQL str representation of each in-focus node is at least this long.
+:: The SPARQL STR representation of each in-filter node is at least this long.
 * sh:maxLength non-negative integer
-:: The SPARQL str representation of each in-focus node is at most this long.
+:: The SPARQL STR representation of each in-filter node is at most this long.
 * sh:minExclusive literal
-:: Each in-focus node is greater than this literal, using SPARQL > test.
+:: Each in-filter node is greater than this literal, using SPARQL > test.
 * sh:minInclusive literal
-:: Each in-focus node is greater than or equal to this literal, using SPARQL >= test.
+:: Each in-filter node is greater than or equal to this literal, using SPARQL >= test.
 * sh:maxExclusive literal
-:: Each in-focus node is less than this literal, using SPARQL < test.
+:: Each in-filter node is less than this literal, using SPARQL < test.
 * sh:maxInclusive literal
-:: Each in-focus node is less than or equal to this literal, using SPARQL <= test.
-* sh:nodeKind sh:BlankNode or sh:IRI or sh:Literal or ...
-:: Each in-focus node is a blank node, an IRI, a literal, respectively. ...
-* sh:pattern pattern or  ( pattern flags )
-:: The SPARQL str representation each in-focus node matches pattern, using flags if present.
+:: Each in-filter node is less than or equal to this literal, using SPARQL <= test.
+* sh:nodeKind sh:BlankNode or sh:IRI or sh:Literal or BlankNodeOrIRI or BlankNodeOrLiteral or IRIOrLiteral
+:: Each in-filter node is a blank node, an IRI, a literal, a blank node or IRI, a blank node or literal, or an IRI or literal, respectively
+* sh:pattern regex  or  ( regex flags )
+:: The SPARQL STR representation each in-filter node matches regex using SPARQL REGEX, with flags if present.
 * sh:equals ( path1 path2 )
-:: Each in-focus node has the same values for each path starting at the node.
+:: Each in-filter node has the same values for the paths starting at the node.
 * sh:disjoint ( path1 path2 )
-:: Each in-focus node has different sets of values for each path starting at the node.
+:: Each in-filter node has disjoint sets of values for the paths starting at the node.
 * sh:lessThan ( path1 path2 )
-:: For each in-focus node each value for a path is < each value for the next path.
+:: For each in-filter node every value for the first path is SPARQL < every value for the second path.
 * sh:lessThanOrEqual ( path1 path2 )
-:: For each in-focus node each value for a path is <= each value for the next path.
+:: For each in-filter node each value for the first path is SPARQL <= every value for the second path.
 * sh:propValues shape with sh:path
-:: For each in-focus node the values of path validate against shape.
+:: For each in-filter node the values of path validate against shape.
 * sh:list shape
-:: Each in-focus node is a SHACL list and its list elements validate against shape.
+:: Each in-filter node is a SHACL list and its list elements validate against shape.
 * sh:closed ( property ... )
-:: Each in-focus node has no values for any property not in the list or that is not the property of a sh:propValues component of the shape.
-  
-For components that are defined using SPARQL operators, an error result is treated as
-if the operator had returned false.
+:: Each in-filter node has no values for any property not in the list or that is not the property of a sh:propValues component of the shape.
 
 * sh:shape shape
 :: The nodes that validate are those that validate against the shape.
@@ -527,73 +544,78 @@ if the operator had returned false.
 * sh:not shape
 :: The nodes that validate are those that do not validate against the shape.
 * sh:hasValue node
-:: Some in-focus node is the same as the node.
+:: Some in-filter node is the same as the node.
 * sh:minCount int
 :: There are at least int in-filter nodes.
 * sh:maxCount int
 :: There are at most int in-filter nodes.
 * sh:uniqueLang true
-:: An in-focus node fails to validate if it has the same language tag as another in-focus node.
+:: An in-filter node fails to validate if it has the same language tag as another in-filter node.
 * sh:partition ( shape_1, ..., shape_n )
 :: Let input_1 be the set of in-filter nodes.
 :: Let input_i+1 be the out-of-filter nodes of shape_i for input_i.
 :: Nodes that fail to validate for shape_i on input_i fail for the component, for 1<=i<=n.
 :: Nodes in input_n+1 fail to validate for the component.
 
+* sh:constraint shape
+:: Same as sh:shape shape.
+* sh:property shape with single value for sh:predicate.
+:: Same as sh:propValues shape with sh:predicate property replaced by sh:path property.
+* sh:inverseProperty shape with single value for sh:predicate.
+:: Same as sh:propValues shape with sh:predicate property replaced by sh:path [sh:inverse property].
 
-== SPARQL Extension Mechanism (REVISED) ==
+== SHACL Extension ==
 
-This is a description of the syntax of a SPARQL extension for SHACL based on
-substitution and an account of how it works.  This extension mechanism for
-SHACL does not depend on any extensions to SPARQL and thus can be used with
-any SPARQL implementation or service, including SPAQL endpoints
+This is a description of a SPARQL extension for SHACL based on substitution.  This
+extension mechanism for SHACL does not depend on any extensions to SPARQL and thus
+can be used with any SPARQL implementation or service, including SPARQL endpoints
 
 === Using SPARQL Queries in SHACL ===
 
-The extension uses solutions in SPARQL result sets as validation results.
-These solutions have bindings for at least ?this and ?severity.  A set of
-nodes validates against a component in the SPARQL extension if evaluating
-the SPARQL query for the component over the data graph would produce no
-query results with ?severity bound to sh:Violation when joined to a result
-set with solutions having ?this bound to elements of the set.  Validation
-fails on nodes that have a solution in the joined result set with ?this
-bound to the node and ?severity bound to sh:Violation.
+The extension uses solutions in SPARQL result sets as validation results.  These
+solutions have bindings for at least ?this and ?severity.  A set of nodes validates
+against a component in the SPARQL extension if evaluating the SPARQL query for the
+component over the data graph would produce no query results with ?severity bound to
+sh:Violation when joined to a result set with solutions having ?this bound to
+elements of the set.  Validation fails on nodes that have a solution in the joined
+result set with ?this bound to the node and ?severity bound to sh:Violation.
 
-The extension uses solutions in SPARQL result sets as scopes and as
-synthetic properties.  For scopes, the set of nodes in a scope are the set
-of bindings for ?scope in the solutions of a result set.  For synthetic
-properties, the set of subject, object pairs in a synthetic property are the
-set of pairs of bindings for ?subject and ?object in the solutions of a
-result set.
+The extension uses solutions in SPARQL result sets as scopes and as synthetic
+properties.  For scopes, the set of nodes in a scope are the set of bindings for
+?scope in the solutions of a result set.  For synthetic properties, the set of
+subject, object pairs in a synthetic property are the set of pairs of bindings for
+?subject and ?object in the solutions of a result set.
 
-The SPARQL queries in this extension are always augmented with namespace
-prefix bindings for rdf:, rdfs:, xsd:, and sh: as above.  [[A mechanism for
-augmenting these bindings might be useful.]]
+The SPARQL queries in this extension are always augmented with namespace prefix
+bindings for rdf:, rdfs:, xsd:, and sh: as above.  '''A mechanism for augmenting these
+bindings might be useful.'''
 
 The SPARQL queries in this extension are always run over the data graph.
-(The shapes in templates validate arguments to components and scopes, so the
-data graph for them is the shapes graph.)
+(The shapes in templates validate arguments to components and scopes of
+shapes, so the data graph for them is the shapes graph.)
 
 === Component Templates ===
 
-Component templates provide components based on parameterized SPARQL code.  A
-component template is a node in the shapes graph that is an RDFS instance of
+Component templates provide components based on parameterized SPARQL code.
+A ''component template'' is an IRI that is an RDFS instance of
 sh:ComponentTemplate in the shapes graph.  Each triple in the shapes graph
-whose subject is a shape and whose property is a component template is a
-template component of the shape.
+whose subject is a shape and whose predicate is a component template is a
+''template component'' of the shape.
 
 A component template is used as a shape to check the syntactic validity of
 template components.  The object of a template component triple is validated
 against the component template considered as a shape.  If the validation
-fails the template component is syntactically illegal.  The sh:propValues
-components in component templates can also have sh:argumentName and
-sh:defaultValue triples that are used in the process of constructing the
-query for template components.
+fails the template component is syntactically illegal.
 
-Component templates provide SPARQL queries to define the query via 
+The sh:propValues components in component templates shapes can also have
+sh:argumentName and sh:defaultValue triples that are used in the process of
+constructing the query for template components.
+
+Component templates provide SPARQL queries (actually strings that are used
+to produce SPARQL code via the substitution process described below) to define
+the query via their value for
   sh:templateQuery   parameterized SPARQL query
-
-Alternatively the query can be constructed from other properties
+Alternatively the query can be constructed from the values of other properties
   sh:templateFilter  parameterized SPARQL expression
   sh:templatePattern parameterized SPARQL pattern
   sh:templateHaving  parameterized SPARQL expression
@@ -603,8 +625,9 @@ validate against the component.  The sh:templatePattern eliminates bindings
 for ?this that would validate against the component.  The sh:templateHaving
 eliminates groups of solutions for ?this bindings that would validate
 against the component.  The values for sh:templateMessage are used to
-construct the message part of validation results.  They are all used to
-construct a parameterized query for the component that looks like
+construct the message part of validation results.  These four property
+values are all used to construct a parameterized query for the template
+that looks like
   SELECT [projection] ?this ?message ?severity (?this AS ?object)
   WHERE { [outer] [inner] <pattern> FILTER ( ! <filter> ) }
   [group] HAVING <having>
@@ -625,46 +648,47 @@ Substition expressions can be
 # s(name), where the name's value is processed as a shape
 # c(path name), where the name's value is processed as a shape to produce a shape for path values
 # l(expression string), where the list values for the value of identifier in expression are processed instead of its values and the results joined with string
-All processing happens in the shapes graph.
+'''This syntax needs to be defined more precisely.'''  All processing
+happens in the shapes graph. 
 
-The values for names are set up from two sources.  Values for several
-standard names are set up automatically:
+The values for names come from two sources.  Values for several standard
+names are set up automatically: 
 # argument is the object of the template component triple
-# projection is usually a SPARQL variable that serves as a context 
-# outer is usually a SPARQL pattern that produces bindings for the projection variable
+# projection is a SPARQL variable that serves as a context, but can also be the empty string
+# outer is a SPARQL pattern that produces bindings for the projection variable, but can also be the empty string
 # inner is a SPARQL pattern that produces bindings for ?this
-# group is usually a SPARQL GROUP BY fragment that groups by the projection variable
+# group is a SPARQL GROUP BY fragment that groups by the projection variable, but can also be the empty string
 # severity is the severity to be used in the component
 
 Other values come from sh:propValues components in the component template that
-have sh:argumentName triples in their shape.  Each such sh:propValues
+have sh:argumentName triples in their shape argument.  Each such sh:propValues
 component produces a value for the object of its sh:argumentName triple that
 is either one of the values for its path starting from the its argument or
-the value of its sh:defaultValue triple if there are no value for the path.
+the value of its sh:defaultValue triple if there are no values for the path.
 
 Note: Having multiple sh:propValues with the same sh:argumentName leads to
 indeterminate results.  Having multiple values for an argument path leads to
-indeterminate results. It might be better to instead collect all the values
-somehow, but there would need to be some analysis to determine how to do this.
+indeterminate results. '''It might be better to instead collect all the values
+somehow, but there would need to be some analysis to determine how to do this best.'''
 
 
 === Scope Templates ===
 
 Scope templates provide scopes based on parameterized SPARQL queries.  A
-scope template is a node in the shapes graph that is an RDFS instance of
-sh:ScopeTemplate in the shapes graph.  Each triple in the shapes graph whose
-subject is a shape and whose property is a scop template is a template scope
-of the shape.  A scope template is also used as a shape in the same way that
-a component template is.
+''scope template'' is an IRI that is an RDFS instance of sh:ScopeTemplate in
+the shapes graph.  Each triple in the shapes graph whose subject is a shape
+and whose predicate is a scope template is a template scope of the shape.  A
+scope template is also used as a shape in the same way that a component
+template is.
 
 Scope templates provide SPARQL queries to define the query via 
   sh:templateQuery parameterized SPARQL query
-The query for a template scope is constructed in the same way as for a
-template component except that the alternative query consruction method is
-not used.  As well, the only standard name is argument.
+The query for a template scope is constructed in the same way as for a template
+component except that the alternative query consruction method is not used.  As well,
+the only standard name is argument.
 
-The nodes in the scope are the bindings for ?scope in solutions in the
-result set of the query augmented as above run over the data graph.
+The nodes ''selected'' by a template scope are the bindings for ?scope in
+solutions in the result set of the SPARQL query run over the data graph.
 
 === Direct Use of SPARQL Queries ===
 
@@ -675,26 +699,27 @@ substitutions.
 
 SPARQL queries are directly allowed in scopes via
   sh:scopeQuery SPARQL query
-The SPARQL query for a sh:scopeQuery scope is produced with no substitution.
+The SPARQL query for a sh:scopeQuery scope is the provided query with no substitution.
 
 SPARQL queries are also allowed as path parts.  The bindings of ?subject and
 ?object in solutions of its result set are considered as subjects and
-objects of a synthetic property.  [[This produces truly awful syntax, and
-should be fixed somehow.]]  Note: The derived values equality constraint is
+objects of a synthetic property.  '''This produces truly awful syntax, and
+should be fixed somehow.'''  Note: The derived values equality constraint is
 replaced by an sh:equals with one of the paths using SPARQL code.
 
 === Examples ===
 
   ex:example a sh:ComponentTemplate ;
     sh:propValues [ sh:path ex:predicate ;
-    		    sh:class rdf:Property;
- 		    sh:minCount 1 ; sh:maxCount 1 ] ;
+                    sh:class rdf:Property;
+                    sh:minCount 1 ; sh:maxCount 1 ] ;
     sh:propValues [ sh:path ex:lang ;
-    		    sh:datatype xs:string ] ) ;
+                    sh:datatype xs:string ;
+                    sh:minCount 1 ; sh:maxCount 1 ] ;
     sh:sparqlTemplate """... ?this ...""" .
 
   ex:exampleShape a sh:Shape ;
-    ex:example [ ex:predicate ex:p ; ex:lang "de" ; ex:lang "en" ] .
+    ex:example [ ex:predicate ex:p ; ex:lang "de" ] .
 
   sh:class a sh:ComponentTemplate ; rdfs:domain sh:Shape ; rdfs:range rdfs:Class ;
     sh:nodeKind sh:IRI ;
@@ -704,4 +729,3 @@ replaced by an sh:equals with one of the paths using SPARQL code.
 
   ex:listexShape a sh:Shape ;
      ex:listex ( ex:person ex:p2 ) .
-
