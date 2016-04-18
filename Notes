@@ -1,12 +1,20 @@
 		Implementing SHACL as a translation to SPARQL
 
-I updated my older implementation of SHACL to my new syntax proposal and
-added the missing pieces.  This implementation is a pure translation to
-SPARQL - the validation results of a SHACL shape are the elements of the
-result set returned by a SPARQL query against an RDF graph.  The
-implementation cannot depend on pre-binding in the data graph or hasShape or
-anything that is not in SPARQL.  The implementation also does not depend on
-access to the shapes graph during the execution of the SPARQL queries.
+
+This is an implementation (actually two related implementations) that
+performs SHACL validation by first constructing a SPARQL 1.1 SELECT query
+and then running that query on the data graph.  One implementation directly
+creates SPARQL queries for core SHACL shapes.  The other implementation
+implements the SHACL SPARQL extension and produces SPARQL queries for core
+SHACL shapes using a metamodel graph that has templates for all the core
+SHACL components except partition
+
+This implementation is a pure translation to SPARQL - the validation results
+of a SHACL shape are the elements of the result set returned by a SPARQL
+query against an RDF graph.  The implementation cannot depend on pre-binding
+in the data graph or hasShape or anything that is not in SPARQL.  The
+implementation also does not depend on access to the shapes graph during the
+execution of the SPARQL queries.
 
 
 	Implementation Basics
@@ -53,15 +61,40 @@ to generate the SPARQL queries.  This is all available as
 
 	Validation Results
 
-Validation results are solutions in SPARQL result sets.  These result sets
-have bindings as follows
- ?this - head node for the result
- ?shape - top-level shape involved in result
- ?message - message for result
- ?severity - severity of result
- ?subject - subject of triple in result
- ?predicate - predicate of triple in result
- ?object - object of triple in result
+The result sets contain bindings for the following variables:
+  Variable	SHACL predicate		description
+  parent	      			the node that was traversed to get
+  					to the focus node, if any
+  this		sh:focusNode		focus node
+  thisShape	sh:sourceShape		identifier for shape that produced the result
+  childShape				identifier for embedded shape, if any
+  subject	sh:subject		usually focus node of violation
+  predicate	sh:predicate		property or path involved in violation
+  object	sh:object
+  severity	sh:severity		severity of result
+  component	sh:sourceTemplate	component property that produced the result
+  message	sh:message		a human readable message
+
+Identifiers for shapes are the node itself if the shape is an IRI and a
+unique identifier for shapes that are blank nodes.  Note that for inverse
+properties, the subject variable is the object of the triple that produced
+the violation and the object variable is the subject of the triple.
+
+A node validates against a shape if there is no solution in the result set
+with the variable this bound to the node or unbound, the variable PS
+bound to the identifier for the shape, and the variable severity bound to
+sh:Violation.
+
+The SHACL validation results graph can be constructed by first creating a
+blank node for each solution in the result set and adding triples with it as
+subject as above.  For solutions that have the CS variable bound a sh:detail
+triple is added for each other solution that has its PS variable bound to
+the CS binding in this solution and the focus node of this solution as its
+binding for the parent variable.  This triple has the node for this solution
+as its subject and the node for the other solution as its object.
+
+It might be better to put the parent shape in the child solution instead of
+the child shape in the parent solution.
 
        Templates
 
