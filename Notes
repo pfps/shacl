@@ -5,29 +5,30 @@ This is an implementation (actually two related implementations) that
 performs SHACL validation by first constructing a SPARQL 1.1 SELECT query
 and then running that query on the data graph.  One implementation directly
 creates SPARQL queries for core SHACL shapes.  The other implementation
-implements the SHACL SPARQL extension and produces SPARQL queries for core
+implements a SPARQL extension for SHACL and produces SPARQL queries for core
 SHACL shapes using a metamodel graph that has templates for all the core
 SHACL components except partition
 
-This implementation is a pure translation to SPARQL - the validation results
-of a SHACL shape are the elements of the result set returned by a SPARQL
-query against an RDF graph.  The implementation cannot depend on pre-binding
-in the data graph or hasShape or anything that is not in SPARQL.  The
-implementation also does not depend on access to the shapes graph during the
-execution of the SPARQL queries.
+The implementations are both pure translations to SPARQL - the validation
+results of a SHACL shape are a transformation of the result set returned by
+a SPARQL query against the data graph.  The implementation thus cannot
+depend on pre-binding in the data graph or hasShape or anything that is not
+in SPARQL.  The implementation also does not depend on access to the shapes
+graph during the execution of the SPARQL queries.
 
 
 	Implementation Basics
 
 The queries that implement shape validation need an environment where the
-main variable (always ?this) will include the nodes in the data graph that
-need to be validated.  This is easy for the initial shape (the one that
-works on the results of scopes) but not so easy for embedded shapes.
+main query variable (always ?this) will have bindings for the nodes in the
+data graph that need to be validated.  This is easy for the initial shape
+(the one that works on the results of scopes) but not so easy for embedded
+shapes.
 
-To ensure that embedded shapes work correctly they use a graph pattern that
-correctly generates bindings for ?this.  For example, inside a construct
-that is looking at the values of a path the pattern will bind ?this to these
-values.
+To ensure that embedded shapes work correctly embedded shapes use a graph
+pattern that correctly generates bindings for ?this.  For example, inside a
+construct that is looking at the values of a path the pattern will bind
+?this to these values.
 
 However, this is not quite sufficient for constructs (like minCount) that
 need to look at a set of values as an entirety.  If there are no values for
@@ -35,21 +36,21 @@ need to look at a set of values as an entirety.  If there are no values for
 To get around this problem, the graph pattern thus does not just generate
 bindings for ?this but bindings for ?this related to another node, which is
 the binding for ?parent, or related to the graph as a whole, in which case
-there is no ?parent variable.
+there is no ?parent variable.  The net effect then is that for those
+constructs that need it the pattern can be grouped correctly to make these
+sets, that can, for example, be counted for minCount, even if the set is the
+empty set.
 
-The net effect then is that for those constructs that need it the pattern
-can be grouped correctly to make these sets, that can, for example, be
-counted for minCount, even if the set is the empty set.
+So that the correct pattern can be generated in all cases, the pattern is
+broken up into two parts - one that sets up the stage (usually determining
+bindings for ?parent) and one that then sets up bindings for ?this (usually
+using the bindings for ?parent if it is available).  When looking at values
+of a path, the outer part is removed, the inner part becomes the new outer,
+and a new inner is created to transverse the path.
 
-So that the correct pattern can be generated when looking at values of
-values, it is broken up into two parts - one that sets up the stage (usually
-determining bindings for ?parent) and one that then sets up bindings for
-?this (usually using the bindings for ?parent if it is available).  When
-looking at values of values, the outer part is removed, the inner part
-becomes the new outer, and a new inner is created to transverse the path.
-
-To this basic context is added several pieces of information that is needed
-to generate the SPARQL queries.  This is all available as
+To this basic context is added several pieces of information that are needed
+to generate the correct SPARQL queries to implement SHACL components.  The
+entire set of information available consists of
   inner - SPARQL pattern or query to get bindings for ?this
   	- usually goes from ?parent to ?this
   outer - SPARQL pattern or query to get bindings for ?parent
@@ -106,15 +107,29 @@ handle subshapes, the method also allows the query for a shape to be
 substituted into the code.  
 
 Because there is no functional help like hasShape available the SPARQL
-queries need to do include all the mediation for subshapes.  This ends up
-with slightly more complex queries than otherwise, but in most cases what is
-needed just boilerplate and can be added on to the core portion of the query
-by the implementation.  The template mechanism is designed to take care of
-this boilerplate.
+queries need to include all the mediation for subshapes.  This ends up with
+slightly more complex queries than otherwise, but in most cases what is
+needed just boilerplate and can be added on to the core portion of the
+query.  The template mechanism is designed to take care of this boilerplate
+in many cases.
 
-Substitution normally puts a representation of a node itself into the SPARQL
-code.  To get access to larger chunks of the shape graph requires adding a
-specifier to the 
+Templates use a substitution mechanism to access their argument and the
+information described above.  Subsitution takes a string (usually
+parameterized SPARQL code) and a mapping from strings to replacement strings
+and replaces substrings of the form [directive] in the first string 
+for directives of the form
+- s(e) : recursively process e, treat the result as a shape in the shapes
+       	 graph, and return the SPARQL query for the shape
+- c(p,e) : recursively process p and e, treat the result for e as a shape in the shapes
+       	 graph, and return the SPARQL query for propValues with the
+	 result of p considered as a path the shape
+- p(e) : recursively process e, treat the result as a path in the shapes
+       	 graph, and return the SPARQL code for that path
+- l(e,"string") : recursively process e, treat the result as a list in the
+	shapes graph, and return string representations of the list elements
+	joined with string
+- "replacement" : return replacement
+- name : return the mapping for name
 
 Template instantiation proceeds by first augmenting a copy of the context
 with argument being the argument of the template, then it looks through
