@@ -324,7 +324,7 @@ The syntax of the various core SHACL components are:
   sh:nodeKind     sh:BlankNode or sh:IRI or sh:Literal or
                   BlankNodeOrIRI or BlankNodeOrLiteral or IRIOrLiteral
   sh:pattern      string used as a regular expression pattern  or
-                  two-element list of pattern and string used as flags
+  		  node with sh:regex value as pattern and sh:flags value as flags
   sh:equals       two paths
   sh:disjoint     two paths
   sh:lessThan     two paths
@@ -518,7 +518,7 @@ an error result is treated as if the operator had returned false.
 :: Each in-filter node is less than or equal to this literal, using SPARQL <= test.
 * sh:nodeKind sh:BlankNode or sh:IRI or sh:Literal or BlankNodeOrIRI or BlankNodeOrLiteral or IRIOrLiteral
 :: Each in-filter node is a blank node, an IRI, a literal, a blank node or IRI, a blank node or literal, or an IRI or literal, respectively
-* sh:pattern regex  or  ( regex flags )
+* sh:pattern regex  or  [ sh:regex regex; sh:flags flags ]
 :: The SPARQL STR representation each in-filter node matches regex using SPARQL REGEX, with flags if present.
 * sh:equals ( path1 path2 )
 :: Each in-filter node has the same values for the paths starting at the node.
@@ -642,11 +642,11 @@ have substrings of the form
   [expression]
 that are treated as substitution expressions subject to replacement.
 Substition expressions can be 
-# a quoted string
-# a simple name, where the name's value in the context is substituted
-# p(name), where the name's value is processed as a path
-# s(name), where the name's value is processed as a shape
-# c(path name), where the name's value is processed as a shape to produce a shape for path values
+# a quoted string, where the string is substituted
+# a simple name, where the name's mapping in the context is substituted
+# p(name), where the name's mapping is processed as a path
+# s(name), where the name's mapping is processed as a shape
+# c(path name), where the name's mapping is processed as a shape to produce a shape for path values
 # l(expression string), where the list values for the value of identifier in expression are processed instead of its values and the results joined with string
 '''This syntax needs to be defined more precisely.'''  All processing
 happens in the shapes graph. 
