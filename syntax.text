@@ -545,10 +545,10 @@ an error result is treated as if the operator had returned false.
 :: The nodes that validate are those that do not validate against the shape.
 * sh:hasValue node
 :: Some in-filter node is the same as the node.
-* sh:minCount int
-:: There are at least int in-filter nodes.
-* sh:maxCount int
-:: There are at most int in-filter nodes.
+* sh:minCount non-negative integer
+:: There are at least integer in-filter nodes.
+* sh:maxCount non-negative integer
+:: There are at most integer in-filter nodes.
 * sh:uniqueLang true
 :: An in-filter node fails to validate if it has the same language tag as another in-filter node.
 * sh:partition ( shape_1, ..., shape_n )
